@@ -6,11 +6,6 @@
     "start": "npx expo start",
     "android": "npx expo start --android",
     "android-clean": "npx expo start --android --clear",
-    "run-android": "npx expo run:android",
-    "fix-native": "node scripts/fix-react-native.js",
-    "android-device": "node scripts/run-on-android-device.js",
-    "setup-android": "node scripts/setup-android.js",
-    "fix-usb": "node scripts/fix-usb-connection.js",
     "device": "node scripts/run-with-new-expo.js",
     "upgrade-sdk": "node scripts/upgrade-expo-fixed.js",
     "reset-cache": "npx expo start --clear",
@@ -18,11 +13,9 @@
     "web": "npx expo start --web",
     "doctor": "npx expo doctor --fix-dependencies",
     "verify-firebase": "node scripts/verify-firebase.js",
-    "test": "node tests/run-tests.js",
-    "direct-android": "npx expo run:android --device"
+    "test": "node tests/run-tests.js"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
@@ -31,7 +24,7 @@
     "expo-dev-client": "~5.0.12",
     "expo-location": "~18.0.7",
     "expo-status-bar": "~2.0.1",
-    "firebase": "^10.8.0",
+    "firebase": "^11.4.0",
     "react": "18.3.1",
     "react-native": "0.76.7",
     "react-native-gesture-handler": "~2.20.2",

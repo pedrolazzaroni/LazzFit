@@ -1,0 +1,15 @@
+// Configuração personalizada do Metro Bundler
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Configurações adicionais para resolver problemas comuns
+config.resolver.sourceExts = ['jsx', 'js', 'ts', 'tsx', 'json']; // Adiciona extensões suportadas
+config.resolver.assetExts = [...config.resolver.assetExts, 'pem', 'crt']; // Adiciona tipos de assets
+config.transformer.minifierPath = 'metro-minify-terser'; // Usa um minificador alternativo
+config.maxWorkers = 2; // Reduz o número de workers para evitar problemas de memória
+
+// Aumenta o limite de memória
+config.cacheStores = [];
+
+module.exports = config;
