@@ -8,30 +8,449 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
 import os
 import sys
+import time
+import threading
 
+# Classes de animação para interface mais moderna
+class AnimatedLabel(ctk.CTkLabel):
+    """Label com animação de fade in"""
+    def __init__(self, master, **kwargs):
+        self.delay = kwargs.pop('delay', 0)
+        self.fade_duration = kwargs.pop('fade_duration', 10)
+        super().__init__(master, **kwargs)
+        
+        # Iniciar invisível
+        self.alpha = 0
+        self.configure(text_color_disabled=self.cget("text_color"))
+        
+        # Iniciar a animação com um pequeno atraso
+        if self.winfo_exists():
+            self.after(self.delay, self.start_fade_in)
+    
+    def start_fade_in(self):
+        """Inicia a animação de fade in"""
+        if self.winfo_exists():
+            self._fade_step()
+    
+    def _fade_step(self):
+        """Executa um passo da animação de fade"""
+        if not self.winfo_exists():
+            return
+            
+        self.alpha += 0.1
+        if self.alpha <= 1:
+            # Continuar a animação
+            self.configure(text_color=self.cget("text_color"))
+            self.after(self.fade_duration, self._fade_step)
+
+class AnimatedFrame(ctk.CTkFrame):
+    """Frame com animação de slide-in"""
+    def __init__(self, master, **kwargs):
+        self.direction = kwargs.pop('direction', 'right')
+        self.animation_speed = kwargs.pop('animation_speed', 10)
+        self.animation_distance = kwargs.pop('animation_distance', 100)
+        super().__init__(master, **kwargs)
+        
+        # Posição inicial
+        self.offset = self.animation_distance
+        self.original_pos = None
+        
+        # Iniciar a animação quando o widget for mapeado
+        self.bind('<Map>', self.start_animation)
+    
+    def start_animation(self, event=None):
+        """Inicia a animação de entrada"""
+        if not self.winfo_exists():
+            return
+            
+        # Guardar a posição original
+        if self.original_pos is None:
+            info = self.grid_info()
+            self.original_pos = (int(info['row']), int(info['column']))
+            
+            if self.direction == 'right':
+                self.place(x=self.offset, y=0, relx=0, rely=0)
+            elif self.direction == 'left':
+                self.place(x=-self.offset, y=0, relx=0, rely=0)
+            elif self.direction == 'up':
+                self.place(x=0, y=-self.offset, relx=0, rely=0)
+            elif self.direction == 'down':
+                self.place(x=0, y=self.offset, relx=0, rely=0)
+        
+        # Iniciar a animação
+        self._animate_step()
+    
+    def _animate_step(self):
+        """Executa um passo da animação"""
+        if not self.winfo_exists():
+            return
+            
+        place_info = self.place_info()
+        x = int(place_info['x'])
+        y = int(place_info['y'])
+        
+        finished = False
+        
+        if self.direction == 'right':
+            x -= 5
+            if x <= 0:
+                x = 0
+                finished = True
+        elif self.direction == 'left':
+            x += 5
+            if x >= 0:
+                x = 0
+                finished = True
+        elif self.direction == 'up':
+            y += 5
+            if y >= 0:
+                y = 0
+                finished = True
+        elif self.direction == 'down':
+            y -= 5
+            if y <= 0:
+                y = 0
+                finished = True
+        
+        self.place(x=x, y=y, relx=0, rely=0)
+        
+        if not finished:
+            self.after(self.animation_speed, self._animate_step)
+        else:
+            # Volta para o gerenciador de layout original
+            self.place_forget()
+            self.grid(row=self.original_pos[0], column=self.original_pos[1], sticky="nsew")
+
+# Card interativo para exibição de treinos
+class RunCard(ctk.CTkFrame):
+    """Card interativo que mostra um treino"""
+    def __init__(self, master, run_data, on_edit=None, on_delete=None, colors=None, **kwargs):
+        self.run_data = run_data
+        self.on_edit = on_edit
+        self.on_delete = on_delete
+        self.colors = colors or {"primary": "#FF6700", "secondary": "#FF8533", "text": "white"}
+        self.expanded = False
+        
+        # ID do treino está em run_data[0]
+        self.run_id = run_data[0]
+        
+        # Configurar frame com aparência de card
+        super().__init__(
+            master, 
+            corner_radius=10, 
+            border_width=1, 
+            border_color=self.colors["secondary"],
+            fg_color=("#F9F9F9", "#323232"),
+            **kwargs
+        )
+        
+        self.create_widgets()
+        self.bind("<Enter>", self.on_hover_enter)
+        self.bind("<Leave>", self.on_hover_leave)
+        
+    def create_widgets(self):
+        """Cria os widgets internos do card"""
+        self.columnconfigure(0, weight=2)
+        self.columnconfigure(1, weight=3)
+        self.columnconfigure(2, weight=2)
+        self.columnconfigure(3, weight=1)
+        
+        # Função auxiliar para acessar valores com segurança
+        def safe_get(idx, default="-"):
+            try:
+                val = self.run_data[idx]
+                return val if val is not None else default
+            except IndexError:
+                return default
+
+        # Data e tipo de treino
+        date = safe_get(1, "Sem data")
+        workout_type = safe_get(9, "Corrida")
+        
+        date_frame = ctk.CTkFrame(self, fg_color="transparent")
+        date_frame.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="nw")
+        
+        # Ícone de calendário + data
+        date_label = ctk.CTkLabel(
+            date_frame, 
+            text=f"📅 {date}",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        date_label.pack(anchor="w")
+        
+        # Badge para o tipo de treino
+        type_badge = ctk.CTkLabel(
+            date_frame,
+            text=f" {workout_type} ",
+            fg_color=self.colors["primary"],
+            corner_radius=5,
+            font=ctk.CTkFont(size=12),
+            text_color="white"
+        )
+        type_badge.pack(anchor="w", pady=(5, 0))
+        
+        # Informações principais
+        distance = float(safe_get(2, 0))
+        duration = int(safe_get(3, 0))
+        pace = safe_get(4, "0:00")
+        
+        stats_frame = ctk.CTkFrame(self, fg_color="transparent")
+        stats_frame.grid(row=0, column=1, padx=5, pady=(15, 5), sticky="n")
+        
+        # Distância
+        dist_frame = ctk.CTkFrame(stats_frame, fg_color="transparent")
+        dist_frame.pack(anchor="w", pady=2)
+        
+        ctk.CTkLabel(
+            dist_frame, 
+            text="🏃", 
+            font=ctk.CTkFont(size=16)
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            dist_frame, 
+            text=f" {distance:.2f} km",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(side="left")
+        
+        # Duração
+        time_frame = ctk.CTkFrame(stats_frame, fg_color="transparent")
+        time_frame.pack(anchor="w", pady=2)
+        
+        hours = duration // 60
+        minutes = duration % 60
+        duration_text = f"{hours}h {minutes}min" if hours > 0 else f"{minutes} min"
+        
+        ctk.CTkLabel(
+            time_frame, 
+            text="⏱️", 
+            font=ctk.CTkFont(size=16)
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            time_frame, 
+            text=f" {duration_text}",
+            font=ctk.CTkFont(size=16)
+        ).pack(side="left")
+        
+        # Ritmo
+        pace_frame = ctk.CTkFrame(stats_frame, fg_color="transparent")
+        pace_frame.pack(anchor="w", pady=2)
+        
+        ctk.CTkLabel(
+            pace_frame, 
+            text="⚡", 
+            font=ctk.CTkFont(size=16)
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            pace_frame, 
+            text=f" {pace} min/km",
+            font=ctk.CTkFont(size=16)
+        ).pack(side="left")
+        
+        # BPM e calorias
+        health_frame = ctk.CTkFrame(self, fg_color="transparent")
+        health_frame.grid(row=0, column=2, padx=5, pady=(15, 5), sticky="n")
+        
+        # BPM
+        bpm_avg = safe_get(5, "-")
+        bpm_max = safe_get(6, "-")
+        
+        if bpm_avg != "-":
+            bpm_frame = ctk.CTkFrame(health_frame, fg_color="transparent")
+            bpm_frame.pack(anchor="w", pady=2)
+            
+            ctk.CTkLabel(
+                bpm_frame, 
+                text="❤️", 
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+            
+            ctk.CTkLabel(
+                bpm_frame, 
+                text=f" {bpm_avg} BPM (máx: {bpm_max})",
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+            
+        # Calorias
+        calories = safe_get(8, 0)
+        if calories:
+            cal_frame = ctk.CTkFrame(health_frame, fg_color="transparent")
+            cal_frame.pack(anchor="w", pady=2)
+            
+            ctk.CTkLabel(
+                cal_frame, 
+                text="🔥", 
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+            
+            ctk.CTkLabel(
+                cal_frame, 
+                text=f" {calories} kcal",
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+            
+        # Elevação
+        elevation = safe_get(7, "-")
+        if elevation != "-":
+            elev_frame = ctk.CTkFrame(health_frame, fg_color="transparent")
+            elev_frame.pack(anchor="w", pady=2)
+            
+            ctk.CTkLabel(
+                elev_frame, 
+                text="🏔️", 
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+            
+            ctk.CTkLabel(
+                elev_frame, 
+                text=f" {elevation} m",
+                font=ctk.CTkFont(size=16)
+            ).pack(side="left")
+        
+        # Botões de ação
+        action_frame = ctk.CTkFrame(self, fg_color="transparent")
+        action_frame.grid(row=0, column=3, padx=15, pady=(15, 5), sticky="ne")
+        
+        # Botão para editar
+        edit_btn = ctk.CTkButton(
+            action_frame,
+            text="✏️",
+            width=30,
+            height=30,
+            corner_radius=15,
+            fg_color=self.colors["secondary"],
+            hover_color=self.colors["primary"],
+            command=self._on_edit_click
+        )
+        edit_btn.pack(pady=2)
+        
+        # Botão para excluir
+        delete_btn = ctk.CTkButton(
+            action_frame,
+            text="🗑️",
+            width=30,
+            height=30,
+            corner_radius=15,
+            fg_color="#D32F2F",
+            hover_color="#FF5252",
+            command=self._on_delete_click
+        )
+        delete_btn.pack(pady=2)
+        
+        # Botão para expandir
+        self.expand_btn = ctk.CTkButton(
+            action_frame,
+            text="🔽",
+            width=30,
+            height=30,
+            corner_radius=15,
+            fg_color="#555555",
+            hover_color="#777777",
+            command=self.toggle_expand
+        )
+        self.expand_btn.pack(pady=2)
+        
+        # Área expandida (oculta por padrão)
+        self.expanded_frame = ctk.CTkFrame(self, fg_color=("gray95", "gray20"))
+        
+        # Notas
+        notes = safe_get(10, "")
+        if notes:
+            notes_label = ctk.CTkLabel(
+                self.expanded_frame,
+                text="📝 Notas:",
+                font=ctk.CTkFont(size=14, weight="bold")
+            )
+            notes_label.pack(anchor="w", padx=15, pady=(10, 5))
+            
+            notes_text = ctk.CTkTextbox(self.expanded_frame, height=80)
+            notes_text.pack(fill="x", padx=15, pady=5)
+            notes_text.insert("1.0", notes)
+            notes_text.configure(state="disabled")
+    
+    def _on_edit_click(self):
+        """Evento ao clicar no botão de editar"""
+        if self.on_edit:
+            self.on_edit(self.run_id)
+    
+    def _on_delete_click(self):
+        """Evento ao clicar no botão de excluir"""
+        if self.on_delete:
+            self.on_delete(self.run_id)
+    
+    def toggle_expand(self):
+        """Alterna a exibição da área expandida"""
+        self.expanded = not self.expanded
+        
+        if self.expanded:
+            self.expanded_frame.grid(row=1, column=0, columnspan=4, sticky="ew", padx=10, pady=10)
+            self.expand_btn.configure(text="🔼")
+        else:
+            self.expanded_frame.grid_forget()
+            self.expand_btn.configure(text="🔽")
+    
+    def on_hover_enter(self, event):
+        """Efeito ao passar o mouse sobre o card"""
+        self.configure(fg_color=("#EFEFEF", "#3A3A3A"))
+        
+    def on_hover_leave(self, event):
+        """Efeito ao tirar o mouse do card"""
+        self.configure(fg_color=("#F9F9F9", "#323232"))
+
+# Modificações na classe LazzFitApp
 class LazzFitApp(ctk.CTk):
     def __init__(self, db_manager):
         super().__init__()
         
         self.db = db_manager
         self.title("LazzFit - Gerenciador de Treinos de Corrida")
-        self.geometry("900x600")
+        self.geometry("1100x700")  # Tamanho aumentado para acomodar os cards
         self.resizable(True, True)
         
         # Cores - definição explícita das cores laranja e preto
         self.orange = "#FF6700"
+        self.orange_light = "#FF8533"
         self.black = "#000000"
         self.dark_gray = "#333333"
         self.light_gray = "#555555"
+        self.transparent_gray = "#44444466"  # Cinza com transparência
+        
+        # Caminhos de recursos
+        self.resource_path = self._get_resource_path("resources")
+        
+        # Carregar ícones
+        self.icons = self._load_icons()
         
         # Configurações de cores customizadas
         self._set_appearance()
+        
+        # Para controlar as transições de página
+        self.current_view = None
+        self.is_transitioning = False
         
         # Cria a interface principal
         self._create_widgets()
         
         # Carregar dados iniciais
         self.reload_data()
+    
+    def _get_resource_path(self, relative_path):
+        """Retorna o caminho absoluto para os recursos"""
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        resource_path = os.path.join(base_path, relative_path)
+        
+        # Cria o diretório de recursos se não existir
+        if not os.path.exists(resource_path):
+            os.makedirs(resource_path)
+            
+        return resource_path
+    
+    def _load_icons(self):
+        """Carrega os ícones para a aplicação"""
+        # Como não temos os arquivos físicos, retornamos um dicionário vazio
+        return {}
     
     def _set_appearance(self):
         """Configurações visuais personalizadas"""
@@ -69,82 +488,174 @@ class LazzFitApp(ctk.CTk):
         # Menu lateral
         self._create_sidebar()
         
-        # Área de conteúdo principal (inicialmente com a lista de corridas)
+        # Área de conteúdo principal (inicialmente com a lista de corridas em cards)
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         
-        # Mostrar a visão de lista por padrão
-        self.show_list_view()
-        
+        # Mostrar a visão de cards por padrão (substituindo a visão de tabela)
+        self.show_list_view_cards()
+    
     def _create_sidebar(self):
-        """Cria o menu lateral"""
-        sidebar = ctk.CTkFrame(self, width=200, corner_radius=10)
-        sidebar.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        sidebar.grid_rowconfigure(7, weight=1)  # Espaçamento flexível na parte inferior
+        """Cria o menu lateral com design moderno"""
+        sidebar = ctk.CTkFrame(self, width=220, corner_radius=15)
+        sidebar.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
+        sidebar.grid_rowconfigure(10, weight=1)  # Espaçamento flexível na parte inferior
         
-        # Logotipo
-        logo_label = ctk.CTkLabel(sidebar, text="LazzFit", font=ctk.CTkFont(family="Arial", size=24, weight="bold"))
-        logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        # Logotipo com efeito de sombra
+        logo_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
+        logo_frame.grid(row=0, column=0, padx=20, pady=(30, 10))
         
-        # Subtítulo
-        subtitle_label = ctk.CTkLabel(sidebar, text="Gerenciador de Corridas", font=ctk.CTkFont(size=12))
-        subtitle_label.grid(row=1, column=0, padx=20, pady=(0, 20))
+        # Logo principal
+        logo_label = ctk.CTkLabel(
+            logo_frame, 
+            text="LazzFit", 
+            font=ctk.CTkFont(family="Arial", size=28, weight="bold"),
+            text_color=self.orange
+        )
+        logo_label.pack(pady=5)
+        
+        # Subtítulo com estilo moderno
+        subtitle_label = ctk.CTkLabel(
+            sidebar, 
+            text="Gerenciador de Treinos",
+            font=ctk.CTkFont(size=14, slant="italic"),
+            text_color="#cccccc"  # Cor mais clara para contraste
+        )
+        subtitle_label.grid(row=1, column=0, padx=20, pady=(0, 30))
+        
+        # Separador visual
+        separator = ctk.CTkFrame(sidebar, height=2, fg_color=self.orange_light)
+        separator.grid(row=2, column=0, sticky="ew", padx=15, pady=10)
         
         # Botão Dashboard
         self.dashboard_btn = ctk.CTkButton(
-            sidebar, text="Dashboard", 
-            fg_color=self.orange, hover_color="#FF8533",
+            sidebar, 
+            text="  📊  Dashboard", 
+            anchor="w",
+            fg_color="transparent",
+            text_color="white",
+            hover_color=self.orange_light,
+            corner_radius=8,
+            height=40,
             command=self.show_dashboard
         )
-        self.dashboard_btn.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        self.dashboard_btn.grid(row=3, column=0, padx=10, pady=(15, 5), sticky="ew")
         
         # Botão Listar Corridas
         self.list_runs_btn = ctk.CTkButton(
-            sidebar, text="Listar Corridas", 
-            fg_color=self.orange, hover_color="#FF8533",
-            command=self.show_list_view
+            sidebar, 
+            text="  📋  Listar Corridas", 
+            anchor="w",
+            fg_color="transparent", 
+            text_color="white",
+            hover_color=self.orange_light,
+            corner_radius=8,
+            height=40,
+            command=self.show_list_view_cards
         )
-        self.list_runs_btn.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+        self.list_runs_btn.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
         
         # Botão Nova Corrida
         self.new_run_btn = ctk.CTkButton(
-            sidebar, text="Nova Corrida", 
-            fg_color=self.orange, hover_color="#FF8533",
+            sidebar, 
+            text="  ➕  Nova Corrida", 
+            anchor="w",
+            fg_color="transparent", 
+            text_color="white",
+            hover_color=self.orange_light,
+            corner_radius=8,
+            height=40,
             command=self.show_add_run
         )
-        self.new_run_btn.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+        self.new_run_btn.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
         
         # Botão Estatísticas
         self.stats_btn = ctk.CTkButton(
-            sidebar, text="Estatísticas", 
-            fg_color=self.orange, hover_color="#FF8533",
+            sidebar, 
+            text="  📈  Estatísticas", 
+            anchor="w",
+            fg_color="transparent", 
+            text_color="white",
+            hover_color=self.orange_light,
+            corner_radius=8,
+            height=40,
             command=self.show_statistics
         )
-        self.stats_btn.grid(row=5, column=0, padx=20, pady=10, sticky="ew")
+        self.stats_btn.grid(row=6, column=0, padx=10, pady=5, sticky="ew")
+        
+        # Outro separador
+        separator2 = ctk.CTkFrame(sidebar, height=2, fg_color=self.orange_light)
+        separator2.grid(row=7, column=0, sticky="ew", padx=15, pady=10)
+        
+        # Versão do aplicativo
+        version_label = ctk.CTkLabel(
+            sidebar, 
+            text="v1.0.0",
+            font=ctk.CTkFont(size=12),
+            text_color="#888888"
+        )
+        version_label.grid(row=9, column=0, padx=20, pady=(0, 15))
     
     def reload_data(self):
         """Carrega os dados mais recentes do banco de dados"""
-        # Este método será chamado quando precisarmos atualizar os dados exibidos
-        # Dependendo da visualização atual, podemos chamar diferentes métodos de carregamento
-        if hasattr(self, 'tree') and self.tree.winfo_exists():
+        if self.current_view == "list":
+            if hasattr(self, 'cards_container') and self.cards_container.winfo_exists():
+                self.load_run_data_as_cards()
+        elif hasattr(self, 'tree') and self.tree.winfo_exists():
             self.load_run_data()
     
     def clear_content(self):
-        """Limpa a área de conteúdo"""
+        """Limpa a área de conteúdo com efeito de transição"""
+        # Se estiver em transição, espera
+        if self.is_transitioning:
+            return
+            
+        self.is_transitioning = True
+            
+        # Fade out dos widgets atuais
         for widget in self.content_frame.winfo_children():
             widget.destroy()
+            
+        self.is_transitioning = False
     
     def show_dashboard(self):
-        """Exibe o dashboard principal"""
+        """Exibe o dashboard principal com design modernizado"""
         self.clear_content()
+        self.current_view = "dashboard"
         
-        # Título
-        title = ctk.CTkLabel(self.content_frame, text="Dashboard", font=ctk.CTkFont(size=24, weight="bold"))
-        title.pack(pady=(0, 20), anchor="w")
+        # Título animado
+        header_frame = AnimatedFrame(self.content_frame, fg_color="transparent", direction="down")
+        header_frame.pack(fill="x", pady=(0, 20))
         
-        # Frame para as estatísticas resumidas
-        stats_frame = ctk.CTkFrame(self.content_frame)
+        title = AnimatedLabel(
+            header_frame, 
+            text="Dashboard", 
+            font=ctk.CTkFont(size=26, weight="bold"),
+            delay=100
+        )
+        title.pack(side="left", pady=(0, 0), anchor="w")
+        
+        # Data atual
+        current_date = datetime.now().strftime("%d/%m/%Y")
+        date_label = AnimatedLabel(
+            header_frame, 
+            text=f"Hoje: {current_date}", 
+            font=ctk.CTkFont(size=14),
+            text_color="#888888",
+            delay=300
+        )
+        date_label.pack(side="right", pady=(0, 0), anchor="e")
+        
+        # Frame para as estatísticas resumidas - com animação
+        stats_frame = AnimatedFrame(
+            self.content_frame, 
+            direction="right",
+            animation_speed=8,
+            corner_radius=15
+        )
         stats_frame.pack(fill="x", pady=10, padx=10)
+        
+        # Configurar o grid para os cards
         stats_frame.columnconfigure(0, weight=1)
         stats_frame.columnconfigure(1, weight=1)
         stats_frame.columnconfigure(2, weight=1)
@@ -163,47 +674,95 @@ class LazzFitApp(ctk.CTk):
             seconds = int(pace_seconds % 60)
             avg_pace = f"{minutes}:{seconds:02d}"
         
-        # Mostrando estatísticas em cards
-        # Card 1 - Total de Corridas
-        card1 = ctk.CTkFrame(stats_frame)
-        card1.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        # Cards estatísticos modernizados
+        # Card 1 - Total de Corridas - com sombra e borda arredondada
+        card1 = ctk.CTkFrame(stats_frame, corner_radius=15, border_width=1, border_color=self.orange_light)
+        card1.grid(row=0, column=0, padx=10, pady=10, sticky="ew", ipady=5)
         
-        ctk.CTkLabel(card1, text="Total de Corridas", font=ctk.CTkFont(size=14)).pack(pady=(10, 5))
-        ctk.CTkLabel(card1, text=str(total_runs), font=ctk.CTkFont(size=24, weight="bold"), text_color=self.orange).pack(pady=(0, 10))
+        icon1 = ctk.CTkLabel(card1, text="🏃", font=ctk.CTkFont(size=24))
+        icon1.pack(pady=(15, 5))
+        
+        ctk.CTkLabel(card1, text="Total de Corridas", font=ctk.CTkFont(size=14)).pack(pady=(5, 5))
+        
+        value1 = ctk.CTkLabel(
+            card1, 
+            text=str(total_runs), 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=self.orange
+        )
+        value1.pack(pady=(0, 15))
         
         # Card 2 - Distância Total
-        card2 = ctk.CTkFrame(stats_frame)
-        card2.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        card2 = ctk.CTkFrame(stats_frame, corner_radius=15, border_width=1, border_color=self.orange_light)
+        card2.grid(row=0, column=1, padx=10, pady=10, sticky="ew", ipady=5)
         
-        ctk.CTkLabel(card2, text="Distância Total (km)", font=ctk.CTkFont(size=14)).pack(pady=(10, 5))
-        ctk.CTkLabel(card2, text=f"{total_distance:.2f}", font=ctk.CTkFont(size=24, weight="bold"), text_color=self.orange).pack(pady=(0, 10))
+        icon2 = ctk.CTkLabel(card2, text="📏", font=ctk.CTkFont(size=24))
+        icon2.pack(pady=(15, 5))
+        
+        ctk.CTkLabel(card2, text="Distância Total (km)", font=ctk.CTkFont(size=14)).pack(pady=(5, 5))
+        
+        value2 = ctk.CTkLabel(
+            card2, 
+            text=f"{total_distance:.2f}", 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=self.orange
+        )
+        value2.pack(pady=(0, 15))
         
         # Card 3 - Tempo Total
-        card3 = ctk.CTkFrame(stats_frame)
-        card3.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
+        card3 = ctk.CTkFrame(stats_frame, corner_radius=15, border_width=1, border_color=self.orange_light)
+        card3.grid(row=0, column=2, padx=10, pady=10, sticky="ew", ipady=5)
+        
+        icon3 = ctk.CTkLabel(card3, text="⏱️", font=ctk.CTkFont(size=24))
+        icon3.pack(pady=(15, 5))
+        
+        ctk.CTkLabel(card3, text="Tempo Total", font=ctk.CTkFont(size=14)).pack(pady=(5, 5))
         
         hours = total_time // 60
         minutes = total_time % 60
         
-        ctk.CTkLabel(card3, text="Tempo Total", font=ctk.CTkFont(size=14)).pack(pady=(10, 5))
-        ctk.CTkLabel(card3, text=f"{hours}h {minutes}m", font=ctk.CTkFont(size=24, weight="bold"), text_color=self.orange).pack(pady=(0, 10))
+        value3 = ctk.CTkLabel(
+            card3, 
+            text=f"{hours}h {minutes}m", 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=self.orange
+        )
+        value3.pack(pady=(0, 15))
         
         # Card 4 - Ritmo Médio
-        card4 = ctk.CTkFrame(stats_frame)
-        card4.grid(row=0, column=3, padx=10, pady=10, sticky="ew")
+        card4 = ctk.CTkFrame(stats_frame, corner_radius=15, border_width=1, border_color=self.orange_light)
+        card4.grid(row=0, column=3, padx=10, pady=10, sticky="ew", ipady=5)
         
-        ctk.CTkLabel(card4, text="Ritmo Médio (min/km)", font=ctk.CTkFont(size=14)).pack(pady=(10, 5))
-        ctk.CTkLabel(card4, text=avg_pace, font=ctk.CTkFont(size=24, weight="bold"), text_color=self.orange).pack(pady=(0, 10))
+        icon4 = ctk.CTkLabel(card4, text="⚡", font=ctk.CTkFont(size=24))
+        icon4.pack(pady=(15, 5))
+        
+        ctk.CTkLabel(card4, text="Ritmo Médio (min/km)", font=ctk.CTkFont(size=14)).pack(pady=(5, 5))
+        
+        value4 = ctk.CTkLabel(
+            card4, 
+            text=avg_pace, 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=self.orange
+        )
+        value4.pack(pady=(0, 15))
         
         # Adicionar gráfico de treinos recentes se houver dados
         if runs:
-            chart_frame = ctk.CTkFrame(self.content_frame)
+            chart_frame = AnimatedFrame(
+                self.content_frame, 
+                corner_radius=15, 
+                direction="up",
+                animation_speed=10,
+                animation_distance=50
+            )
             chart_frame.pack(fill="both", expand=True, padx=10, pady=10)
             
             # Título do gráfico
-            ctk.CTkLabel(chart_frame, text="Últimos Treinos", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
+            ctk.CTkLabel(chart_frame, text="Últimos Treinos", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(15, 10))
             
-            fig, ax = plt.subplots(figsize=(7, 4))
+            # Gráfico com estilo moderno
+            fig, ax = plt.subplots(figsize=(8, 4.5), facecolor="#2B2B2B")
+            ax.set_facecolor("#333333")
             
             # Limitar para os últimos 10 treinos
             recent_runs = runs[:10]
@@ -212,18 +771,57 @@ class LazzFitApp(ctk.CTk):
             dates = [run[1] for run in recent_runs]
             distances = [run[2] for run in recent_runs]
             
-            # Gráfico de barras
-            bars = ax.bar(dates, distances, color=self.orange)
-            ax.set_xlabel('Data')
-            ax.set_ylabel('Distância (km)')
-            ax.set_title('Distância por Treino')
+            # Gráfico de barras com estilo moderno
+            bars = ax.bar(dates, distances, color=self.orange, alpha=0.85, width=0.6)
+            
+            # Adicionar valor em cima de cada barra
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width()/2.,
+                    height + 0.1, 
+                    f"{height:.1f}km",
+                    ha='center', 
+                    va='bottom', 
+                    color="white",
+                    fontsize=9
+                )
+            
+            # Personalização do gráfico
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_color('#555555')
+            ax.spines['left'].set_color('#555555')
+            ax.tick_params(colors='white', which='both')
+            
+            ax.set_xlabel('Data', color='white', fontsize=11)
+            ax.set_ylabel('Distância (km)', color='white', fontsize=11)
+            ax.set_title('Distância por Treino', color='white', fontsize=14, fontweight='bold', pad=15)
             ax.tick_params(axis='x', rotation=45)
+            ax.grid(color='#444444', linestyle='--', linewidth=0.5, alpha=0.7)
+            
             fig.tight_layout()
             
             # Incorporar o gráfico ao CTkFrame
             canvas = FigureCanvasTkAgg(fig, chart_frame)
             canvas.draw()
-            canvas.get_tk_widget().pack(fill="both", expand=True)
+            canvas.get_tk_widget().pack(fill="both", expand=True, padx=15, pady=(5, 15))
+            
+            # Adicionar botão para ver todas as estatísticas
+            btn_frame = ctk.CTkFrame(chart_frame, fg_color="transparent")
+            btn_frame.pack(fill="x", padx=15, pady=(0, 15))
+            
+            all_stats_btn = ctk.CTkButton(
+                btn_frame,
+                text="Ver Todas as Estatísticas",
+                font=ctk.CTkFont(size=12),
+                height=32,
+                fg_color=self.orange,
+                hover_color=self.orange_light,
+                corner_radius=8,
+                command=self.show_statistics
+            )
+            all_stats_btn.pack(side="right")
     
     def show_list_view(self):
         """Exibe a lista de treinos com design modernizado"""
@@ -660,30 +1258,51 @@ class LazzFitApp(ctk.CTk):
             messagebox.showerror("Erro", "Não foi possível exportar os dados.")
     
     def show_statistics(self):
-        """Exibe estatísticas dos treinos com design modernizado"""
+        """Exibe estatísticas dos treinos com design modernizado e animações"""
         self.clear_content()
+        self.current_view = "stats"
         
-        # Título
-        header_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        # Título com animação
+        header_frame = AnimatedFrame(self.content_frame, fg_color="transparent", direction="down")
         header_frame.pack(fill="x", pady=(0, 20))
         
-        title = ctk.CTkLabel(
+        title = AnimatedLabel(
             header_frame, 
-            text="Estatísticas", 
-            font=ctk.CTkFont(size=26, weight="bold")
+            text="Estatísticas Detalhadas", 
+            font=ctk.CTkFont(size=26, weight="bold"),
+            delay=100
         )
         title.pack(side="left", pady=(0, 0), anchor="w")
         
-        # Frame para os gráficos
-        charts_frame = ctk.CTkFrame(self.content_frame, corner_radius=15)
+        # Frame para os gráficos - com animação
+        charts_frame = AnimatedFrame(
+            self.content_frame, 
+            corner_radius=15,
+            direction="right",
+            animation_speed=8
+        )
         charts_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Buscar todos os treinos
         runs = self.db.get_all_runs()
         
         if not runs:
-            ctk.CTkLabel(charts_frame, text="Sem dados suficientes para gerar estatísticas.", 
-                         font=ctk.CTkFont(size=16)).pack(pady=50)
+            no_data = ctk.CTkLabel(
+                charts_frame, 
+                text="Sem dados suficientes para gerar estatísticas.\nAdicione alguns treinos primeiro.", 
+                font=ctk.CTkFont(size=16)
+            )
+            no_data.pack(pady=50)
+            
+            # Botão para adicionar treino
+            add_btn = ctk.CTkButton(
+                charts_frame,
+                text="Adicionar Primeiro Treino",
+                fg_color=self.orange,
+                hover_color=self.orange_light,
+                command=self.show_add_run
+            )
+            add_btn.pack(pady=10)
             return
         
         # Extrair dados para os gráficos
@@ -693,44 +1312,59 @@ class LazzFitApp(ctk.CTk):
         avg_bpms = [run[5] for run in runs if run[5]]  # BPM médio (pode ser None)
         elevations = [run[7] for run in runs if run[7]]  # Elevação (pode ser None)
         
-        # Criar figura com dois subplots em fundo escuro
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), facecolor="#2B2B2B")
+        # Sistema de abas para os gráficos
+        tabview = ctk.CTkTabview(charts_frame, corner_radius=15)
+        tabview.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Adicionar as abas
+        tab1 = tabview.add("Distância & Duração")
+        tab2 = tabview.add("Ritmo & Cardio")
+        tab3 = tabview.add("Resumo")
+        
+        # Tab 1: Distância e Duração
+        # -----------------------------
+        fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), facecolor="#2B2B2B")
         ax1.set_facecolor("#333333")
         ax2.set_facecolor("#333333")
         
-        # Gráfico 1: Distância por treino
+        # Gráfico 1: Distância por treino (barras)
         bars = ax1.bar(range(len(dates)), distances, color=self.orange)
         ax1.set_title('Distância por Treino', color='white')
         ax1.set_xlabel('Treino', color='white')
         ax1.set_ylabel('Distância (km)', color='white')
         ax1.tick_params(colors='white')
         
-        # Gráfico 2: Duração por treino
+        # Adicionar linha de tendência
+        if len(distances) > 2:
+            x = range(len(distances))
+            z = np.polyfit(x, distances, 1)
+            p = np.poly1d(z)
+            ax1.plot(x, p(x), "r--", color="#FFaa44", linewidth=2, alpha=0.7)
+        
+        # Gráfico 2: Duração por treino (linha)
         ax2.plot(range(len(dates)), durations, color=self.orange, marker='o')
         ax2.set_title('Duração por Treino', color='white')
         ax2.set_xlabel('Treino', color='white')
         ax2.set_ylabel('Duração (min)', color='white')
         ax2.tick_params(colors='white')
         
-        # Remover bordas desnecessárias
+        # Remover bordas desnecessárias e adicionar grid
         for ax in [ax1, ax2]:
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_color('#555555')
             ax.spines['left'].set_color('#555555')
+            ax.grid(color='#444444', linestyle='--', linewidth=0.5, alpha=0.7)
         
-        fig.tight_layout()
+        fig1.tight_layout()
         
-        # Incorporar o gráfico ao CTkFrame
-        canvas = FigureCanvasTkAgg(fig, charts_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        # Incorporar o gráfico à tab
+        canvas1 = FigureCanvasTkAgg(fig1, tab1)
+        canvas1.draw()
+        canvas1.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Mais gráficos de estatísticas
-        charts_frame2 = ctk.CTkFrame(self.content_frame, corner_radius=15)
-        charts_frame2.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        # Criar figura para o segundo conjunto de gráficos
+        # Tab 2: Ritmo e Cardio
+        # ----------------------
         fig2, (ax3, ax4) = plt.subplots(1, 2, figsize=(10, 5), facecolor="#2B2B2B")
         ax3.set_facecolor("#333333")
         ax4.set_facecolor("#333333")
@@ -743,24 +1377,28 @@ class LazzFitApp(ctk.CTk):
             pace_min = minutes + seconds/60
             paces.append(pace_min)
         
+        # Gráfico 3: Evolução do Ritmo
         ax3.plot(range(len(dates)), paces, color=self.orange, marker='o')
         ax3.set_title('Evolução do Ritmo', color='white')
         ax3.set_xlabel('Treino', color='white')
         ax3.set_ylabel('Ritmo (min/km)', color='white')
         ax3.invert_yaxis()  # Ritmo menor é melhor
         ax3.tick_params(colors='white')
+        ax3.grid(color='#444444', linestyle='--', linewidth=0.5, alpha=0.7)
         
-        # Gráfico para BPM ou Elevação
+        # Gráfico 4: BPM ou Elevação
         if avg_bpms:
             ax4.plot(range(len(avg_bpms)), avg_bpms, color='#FF9966', marker='s', linestyle='-')
             ax4.set_title('BPM Médio por Treino', color='white')
             ax4.set_xlabel('Treino', color='white')
             ax4.set_ylabel('BPM', color='white')
+            ax4.grid(color='#444444', linestyle='--', linewidth=0.5, alpha=0.7)
         elif elevations:
             ax4.bar(range(len(elevations)), elevations, color='#FF9966')
             ax4.set_title('Elevação por Treino', color='white')
             ax4.set_xlabel('Treino', color='white')
             ax4.set_ylabel('Elevação (m)', color='white')
+            ax4.grid(color='#444444', linestyle='--', linewidth=0.5, alpha=0.7)
         else:
             ax4.text(0.5, 0.5, 'Sem dados de BPM ou Elevação', 
                     horizontalalignment='center',
@@ -780,6 +1418,245 @@ class LazzFitApp(ctk.CTk):
         fig2.tight_layout()
         
         # Incorporar o segundo conjunto de gráficos
-        canvas2 = FigureCanvasTkAgg(fig2, charts_frame2)
+        canvas2 = FigureCanvasTkAgg(fig2, tab2)
         canvas2.draw()
         canvas2.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Tab 3: Resumo
+        # --------------
+        summary_frame = ctk.CTkFrame(tab3, fg_color="transparent")
+        summary_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Adicionar uma visão resumida dos dados em forma de texto
+        stats_text = (
+            f"Total de treinos: {len(runs)}\n"
+            f"Distância total: {sum(distances):.2f} km\n"
+            f"Distância média: {sum(distances)/len(runs):.2f} km\n"
+            f"Tempo total: {sum(durations) // 60}h {sum(durations) % 60}min\n"
+            f"Duração média: {sum(durations)/len(runs):.1f} min\n"
+            f"Ritmo médio: {avg_pace}\n"
+        )
+        
+        if avg_bpms:
+            stats_text += f"BPM médio: {sum(avg_bpms)/len(avg_bpms):.1f}\n"
+        
+        if elevations:
+            stats_text += f"Ganho de elevação total: {sum(elevations)} m\n"
+        
+        # Dividir em duas colunas
+        left_frame = ctk.CTkFrame(summary_frame, fg_color="transparent")
+        left_frame.pack(side="left", fill="both", expand=True, padx=10)
+        
+        right_frame = ctk.CTkFrame(summary_frame, fg_color="transparent")
+        right_frame.pack(side="right", fill="both", expand=True, padx=10)
+        
+        # Resumo de estatísticas
+        stats_title = ctk.CTkLabel(
+            left_frame, 
+            text="Resumo de Estatísticas",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        stats_title.pack(anchor="w", pady=(0, 10))
+        
+        stats_box = ctk.CTkTextbox(left_frame, height=200, width=300)
+        stats_box.pack(fill="x", pady=5)
+        stats_box.insert("1.0", stats_text)
+        stats_box.configure(state="disabled")
+        
+        # Botão para exportar estatísticas
+        export_btn = ctk.CTkButton(
+            left_frame,
+            text="Exportar Estatísticas",
+            fg_color=self.orange,
+            hover_color=self.orange_light,
+            command=self.export_runs_to_excel
+        )
+        export_btn.pack(anchor="w", pady=10)
+        
+        # Evolução mensal
+        monthly_title = ctk.CTkLabel(
+            right_frame, 
+            text="Evolução Mensal",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        monthly_title.pack(anchor="w", pady=(0, 10))
+        
+        # Aqui você pode adicionar um gráfico adicional para evolução mensal
+        # ou outro tipo de visualização de dados
+        
+        # Adicionar botão para retornar à visão de treinos
+        return_btn = ctk.CTkButton(
+            self.content_frame,
+            text="Voltar para Lista de Treinos",
+            fg_color=self.orange,
+            hover_color=self.orange_light,
+            command=self.show_list_view_cards
+        )
+        return_btn.pack(pady=20)
+    
+    def show_list_view_cards(self):
+        """Exibe a lista de treinos com cards interativos modernos"""
+        self.clear_content()
+        self.current_view = "list"
+        
+        # Configuração do layout
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_rowconfigure(1, weight=1)
+        
+        # Frame de título com ações
+        header_frame = AnimatedFrame(self.content_frame, fg_color="transparent", direction="down")
+        header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 15))
+        header_frame.grid_columnconfigure(1, weight=1)  # Espaço flexível entre título e botões
+        
+        # Título
+        title = AnimatedLabel(
+            header_frame, 
+            text="Seus Treinos", 
+            font=ctk.CTkFont(size=26, weight="bold"),
+            delay=100
+        )
+        title.grid(row=0, column=0, sticky="w")
+        
+        # Botão de exportar
+        export_btn = ctk.CTkButton(
+            header_frame,
+            text="Exportar Excel",
+            font=ctk.CTkFont(size=12),
+            fg_color=self.orange,
+            hover_color="#FF8533",
+            height=32,
+            corner_radius=8,
+            command=self.export_runs_to_excel
+        )
+        export_btn.grid(row=0, column=2, padx=5)
+        
+        # Botão para adicionar novo treino
+        add_btn = ctk.CTkButton(
+            header_frame,
+            text="Novo Treino",
+            font=ctk.CTkFont(size=12),
+            fg_color=self.orange,
+            hover_color="#FF8533",
+            height=32,
+            corner_radius=8,
+            command=self.show_add_run
+        )
+        add_btn.grid(row=0, column=3, padx=5)
+        
+        # Container com scroll para os cards
+        self.cards_container = ctk.CTkScrollableFrame(self.content_frame, corner_radius=15)
+        self.cards_container.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        
+        # Carregar dados
+        self.load_run_data_as_cards()
+    
+    def load_run_data_as_cards(self):
+        """Carrega os dados dos treinos como cards interativos"""
+        # Limpa o container
+        for widget in self.cards_container.winfo_children():
+            widget.destroy()
+            
+        # Obtém os dados
+        runs = self.db.get_all_runs()
+        
+        if not runs:
+            # Mensagem quando não há treinos cadastrados
+            no_data = ctk.CTkLabel(
+                self.cards_container, 
+                text="Nenhum treino registrado. Clique em 'Novo Treino' para começar!",
+                font=ctk.CTkFont(size=14)
+            )
+            no_data.pack(pady=50)
+            return
+            
+        # Criar um card para cada treino
+        for i, run in enumerate(runs):
+            # Cores para alternar os cards
+            colors = {
+                "primary": self.orange,
+                "secondary": self.orange_light,
+                "text": "white"
+            }
+            
+            # Criar o card com um pequeno atraso para animação
+            card = RunCard(
+                self.cards_container,
+                run_data=run,
+                on_edit=self.edit_selected_card,
+                on_delete=self.delete_selected_card,
+                colors=colors
+            )
+            card.pack(fill="x", padx=10, pady=5, ipady=5)
+            
+            # Simular o efeito de animação sequencial
+            card.after(i * 50, lambda c=card: c.tkraise())
+    
+    def edit_selected_card(self, run_id):
+        """Edita o treino representado pelo card"""
+        run_data = self.db.get_run(run_id)
+        
+        if run_data:
+            self.show_add_run(run_data)
+        else:
+            messagebox.showerror("Erro", "Não foi possível encontrar o treino selecionado.")
+    
+    def delete_selected_card(self, run_id):
+        """Exclui o treino representado pelo card"""
+        if messagebox.askyesno("Confirmar Exclusão", "Tem certeza que deseja excluir este treino?"):
+            self.db.delete_run(run_id)
+            messagebox.showinfo("Sucesso", "Treino excluído com sucesso!")
+            self.load_run_data_as_cards()  # Recarrega os cards
+    
+    def export_runs_to_excel(self):
+        """Exporta os treinos para arquivo Excel"""
+        # Verificar se o módulo Excel está disponível
+        if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
+            messagebox.showerror(
+                "Erro - Módulo não encontrado",
+                "O módulo 'openpyxl' não está instalado.\n\n"
+                "Para habilitar a exportação para Excel, instale o módulo com o comando:\n\n"
+                "pip install openpyxl\n\n"
+                "Ou instale todas as dependências com:\n\n"
+                "pip install -r requirements.txt"
+            )
+            return
+            
+        # Pedir ao usuário onde salvar o arquivo
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel Files", "*.xlsx"), ("Excel Files (Legacy)", "*.xls"), ("All Files", "*.*")],
+            title="Salvar Como"
+        )
+        
+        if not file_path:  # Se o usuário cancelou a seleção do arquivo
+            return
+        
+        # Mostrar um indicador de progresso
+        progress_window = ctk.CTkToplevel(self)
+        progress_window.title("Exportando")
+        progress_window.geometry("300x100")
+        progress_window.resizable(False, False)
+        progress_window.transient(self)  # Ficar sempre à frente da janela principal
+        
+        progress_window.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(progress_window, text="Exportando dados para Excel...", 
+                    font=ctk.CTkFont(size=14)).grid(row=0, column=0, padx=20, pady=(15, 5))
+        
+        progress_bar = ctk.CTkProgressBar(progress_window, width=250)
+        progress_bar.grid(row=1, column=0, padx=20, pady=5)
+        progress_bar.set(0.5)  # Valor indeterminado
+        
+        progress_window.update()
+        
+        # Exportar os dados em uma thread separada para não congelar a interface
+        def export_thread():
+            success = self.db.export_runs_to_xlsx(file_path)
+            progress_window.destroy()
+            
+            if success:
+                messagebox.showinfo("Sucesso", f"Todos os treinos foram exportados para:\n{file_path}")
+            else:
+                messagebox.showerror("Erro", "Não foi possível exportar os dados.")
+        
+        threading.Thread(target=export_thread).start()
