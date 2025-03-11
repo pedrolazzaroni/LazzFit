@@ -1,4 +1,0 @@
-customtkinter==5.2.1
-matplotlib==3.8.2
-pillow==10.1.0
-tkinterweb==3.18.0
