@@ -230,6 +230,46 @@ class LazzFitAPI {
     }
 
     /**
+     * Export selected runs to Excel file
+     * @param {Array} runIds - Array of run IDs to export
+     * @returns {Promise<boolean>} Success flag
+     */
+    async exportSelectedRunsToExcel(runIds) {
+        if (this.isPyWebView) {
+            try {
+                return await pywebview.api.export_selected_to_excel(runIds);
+            } catch (error) {
+                console.error('Error exporting selected runs to Excel:', error);
+                return false;
+            }
+        } else {
+            // Simulate export in testing environment
+            console.log('Selected runs Excel export simulation (not in PyWebView)', runIds);
+            return true;
+        }
+    }
+
+    /**
+     * Export selected runs to CSV file
+     * @param {Array} runIds - Array of run IDs to export
+     * @returns {Promise<boolean>} Success flag
+     */
+    async exportSelectedRunsToCSV(runIds) {
+        if (this.isPyWebView) {
+            try {
+                return await pywebview.api.export_selected_to_csv(runIds);
+            } catch (error) {
+                console.error('Error exporting selected runs to CSV:', error);
+                return false;
+            }
+        } else {
+            // Simulate export in testing environment
+            console.log('Selected runs CSV export simulation (not in PyWebView)', runIds);
+            return true;
+        }
+    }
+
+    /**
      * Calculate pace from distance and duration
      * @private
      * @param {number} distance - Distance in km

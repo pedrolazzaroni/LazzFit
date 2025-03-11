@@ -147,6 +147,63 @@ class LazzFitAPI:
             print(f"Error exporting to CSV: {str(e)}")
             return False
     
+    def export_selected_to_excel(self, run_ids):
+        """Export selected runs to an Excel file"""
+        try:
+            # Verificar se o módulo Excel está disponível
+            if not self.db.EXCEL_AVAILABLE:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification(
+                        'O módulo openpyxl não está instalado. A exportação para Excel não está disponível.',
+                        'error'
+                    );
+                """)
+                return False
+                
+            # Create a file save dialog
+            file_path = self._get_save_filepath("Excel Files", ".xlsx")
+            if not file_path:
+                return False
+                
+            # Make sure it has the correct extension
+            if not file_path.lower().endswith((".xlsx", ".xls")):
+                file_path += ".xlsx"
+                
+            # Export to Excel
+            success = self.db.export_runs_to_xlsx(file_path, run_ids)
+            
+            # Mostrar mensagem de sucesso na interface
+            if success:
+                webview.windows[0].evaluate_js(f"""
+                    app.showNotification(
+                        'Treinos selecionados exportados com sucesso para {file_path}',
+                        'success'
+                    );
+                """)
+                
+            return success
+        except Exception as e:
+            print(f"Error exporting selected runs to Excel: {str(e)}")
+            return False
+
+    def export_selected_to_csv(self, run_ids):
+        """Export selected runs to a CSV file"""
+        try:
+            # Create a file save dialog
+            file_path = self._get_save_filepath("CSV Files", ".csv")
+            if not file_path:
+                return False
+                
+            # Make sure it has the correct extension
+            if not file_path.lower().endswith(".csv"):
+                file_path += ".csv"
+                
+            # Export to CSV
+            return self.db.export_runs_to_csv(file_path, run_ids)
+        except Exception as e:
+            print(f"Error exporting selected runs to CSV: {str(e)}")
+            return False
+    
     def _get_save_filepath(self, file_type_desc, file_ext):
         """Open a native file dialog to get save filepath"""
         def run_dialog():

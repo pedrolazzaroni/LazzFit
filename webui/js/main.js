@@ -178,10 +178,40 @@ class App {
         // Insert into the DOM
         this.viewContainer.appendChild(runsView);
         
+        // Create selection toolbar
+        const selectionToolbar = document.createElement('div');
+        selectionToolbar.className = 'selection-toolbar';
+        selectionToolbar.innerHTML = `
+            <div class="left">
+                <span class="selected-count">0 itens selecionados</span>
+                <button class="action-btn" id="select-all-btn">
+                    <span class="material-icons-round">select_all</span>
+                    Selecionar Todos
+                </button>
+            </div>
+            <div class="right">
+                <button class="action-btn" id="export-selected-btn">
+                    <span class="material-icons-round">file_download</span>
+                    Exportar Selecionados
+                </button>
+                <button class="action-btn" id="clear-selection-btn">
+                    <span class="material-icons-round">clear</span>
+                    Limpar Seleção
+                </button>
+            </div>
+        `;
+        
+        // Insert toolbar before the runs container
+        const runsSection = this.viewContainer.querySelector('.runs-view');
+        runsSection.insertBefore(selectionToolbar, document.getElementById('runs-container'));
+        
         // Set up action buttons
         document.getElementById('export-csv-btn').addEventListener('click', () => this.exportToCSV());
         document.getElementById('export-excel-btn').addEventListener('click', () => this.exportToExcel());
+        document.getElementById('export-selected-btn').addEventListener('click', () => this.exportSelectedRuns());
         document.getElementById('add-run-btn').addEventListener('click', () => this.navigate('add-run'));
+        document.getElementById('select-all-btn').addEventListener('click', () => this.toggleSelectAllRuns());
+        document.getElementById('clear-selection-btn').addEventListener('click', () => this.clearRunSelection());
         
         const runsContainer = document.getElementById('runs-container');
         
@@ -208,7 +238,153 @@ class App {
                 this.editRun.bind(this),
                 this.confirmDeleteRun.bind(this)
             );
+            
+            // Make cards selectable with click
+            card.addEventListener('click', (e) => {
+                // If click was on action buttons, don't toggle selection
+                if (e.target.closest('.card-actions')) return;
+                
+                this.toggleRunCardSelection(card);
+            });
+            
             runsContainer.appendChild(card);
+        });
+        
+        // Add selected runs counter
+        this.selectedRunsCount = 0;
+    }
+    
+    /**
+     * Toggle selection state of a run card
+     * @param {HTMLElement} card - The run card element
+     */
+    toggleRunCardSelection(card) {
+        const isSelected = card.classList.toggle('selected');
+        const runId = parseInt(card.dataset.id);
+        
+        if (isSelected) {
+            this.selectedRunsCount++;
+        } else {
+            this.selectedRunsCount--;
+        }
+        
+        // Update selection toolbar visibility
+        const toolbar = this.viewContainer.querySelector('.selection-toolbar');
+        if (this.selectedRunsCount > 0) {
+            toolbar.classList.add('active');
+            toolbar.querySelector('.selected-count').textContent = 
+                `${this.selectedRunsCount} item${this.selectedRunsCount !== 1 ? 's' : ''} selecionado${this.selectedRunsCount !== 1 ? 's' : ''}`;
+        } else {
+            toolbar.classList.remove('active');
+        }
+    }
+    
+    /**
+     * Toggle selection for all run cards
+     */
+    toggleSelectAllRuns() {
+        const allCards = this.viewContainer.querySelectorAll('.run-card');
+        const allSelected = this.selectedRunsCount === allCards.length;
+        
+        // If all are selected, deselect all. Otherwise, select all.
+        allCards.forEach(card => {
+            const isCurrentlySelected = card.classList.contains('selected');
+            
+            if (allSelected) {
+                // Deselect if already selected
+                if (isCurrentlySelected) {
+                    card.classList.remove('selected');
+                    this.selectedRunsCount--;
+                }
+            } else {
+                // Select if not already selected
+                if (!isCurrentlySelected) {
+                    card.classList.add('selected');
+                    this.selectedRunsCount++;
+                }
+            }
+        });
+        
+        // Update toolbar
+        const toolbar = this.viewContainer.querySelector('.selection-toolbar');
+        if (this.selectedRunsCount > 0) {
+            toolbar.classList.add('active');
+            toolbar.querySelector('.selected-count').textContent = 
+                `${this.selectedRunsCount} item${this.selectedRunsCount !== 1 ? 's' : ''} selecionado${this.selectedRunsCount !== 1 ? 's' : ''}`;
+        } else {
+            toolbar.classList.remove('active');
+        }
+    }
+    
+    /**
+     * Clear selection of all run cards
+     */
+    clearRunSelection() {
+        const allCards = this.viewContainer.querySelectorAll('.run-card.selected');
+        allCards.forEach(card => card.classList.remove('selected'));
+        this.selectedRunsCount = 0;
+        
+        // Hide toolbar
+        const toolbar = this.viewContainer.querySelector('.selection-toolbar');
+        toolbar.classList.remove('active');
+    }
+    
+    /**
+     * Export selected runs
+     */
+    async exportSelectedRuns() {
+        const selectedCards = this.viewContainer.querySelectorAll('.run-card.selected');
+        
+        if (selectedCards.length === 0) {
+            this.showNotification('Nenhum treino selecionado para exportação', 'warning');
+            return;
+        }
+        
+        const selectedIds = Array.from(selectedCards).map(card => parseInt(card.dataset.id));
+        
+        // Create export options dialog
+        const dialogContent = document.createElement('div');
+        dialogContent.innerHTML = `
+            <p>Escolha o formato de exportação para ${selectedCards.length} treino(s) selecionado(s):</p>
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button id="excel-export-option" class="btn primary">
+                    <span class="material-icons-round">table_view</span>
+                    Excel (.xlsx)
+                </button>
+                <button id="csv-export-option" class="btn">
+                    <span class="material-icons-round">description</span>
+                    CSV (.csv)
+                </button>
+            </div>
+        `;
+        
+        const dialog = components.showDialog(
+            'Exportar Treinos',
+            dialogContent,
+            []
+        );
+        
+        // Add event listeners for export buttons
+        dialogContent.querySelector('#excel-export-option').addEventListener('click', async () => {
+            dialog.close();
+            this.showNotification('Exportando treinos selecionados para Excel...', 'info');
+            const success = await api.exportSelectedRunsToExcel(selectedIds);
+            if (success) {
+                this.showNotification(`${selectedCards.length} treino(s) exportado(s) com sucesso!`, 'success');
+            } else {
+                this.showNotification('Falha ao exportar treinos.', 'error');
+            }
+        });
+        
+        dialogContent.querySelector('#csv-export-option').addEventListener('click', async () => {
+            dialog.close();
+            this.showNotification('Exportando treinos selecionados para CSV...', 'info');
+            const success = await api.exportSelectedRunsToCSV(selectedIds);
+            if (success) {
+                this.showNotification(`${selectedCards.length} treino(s) exportado(s) com sucesso!`, 'success');
+            } else {
+                this.showNotification('Falha ao exportar treinos.', 'error');
+            }
         });
     }
     
@@ -247,6 +423,9 @@ class App {
         // Set today's date as default
         const today = new Date().toISOString().split('T')[0];
         dateField.value = today;
+        
+        // Apply input formatting
+        components.applyInputFormatting(distanceField, durationField);
         
         // Load workout types
         const workoutTypes = await api.getWorkoutTypes();
@@ -432,6 +611,56 @@ class App {
             // Set up export button
             document.getElementById('export-stats-btn').addEventListener('click', () => {
                 this.exportToExcel();
+            });
+        }, 100);
+        
+        // Fix for Pace & Cardio tab
+        setTimeout(() => {
+            // Get all tabs
+            const tabs = document.querySelectorAll('.tab');
+            
+            // Set up resize handler for better chart responsiveness
+            const resizeHandler = () => {
+                const activeTab = document.querySelector('.tab.active');
+                if (activeTab && activeTab.dataset.tab === 'pace-cardio') {
+                    // Redraw charts when pace-cardio tab is active and window resizes
+                    if (charts.charts.pace) charts.charts.pace.destroy();
+                    if (charts.charts.cardio) charts.charts.cardio.destroy();
+                    
+                    charts.createPaceChart('pace-chart', this.runs);
+                    charts.createCardioChart('cardio-chart', this.runs);
+                }
+            };
+            
+            window.addEventListener('resize', resizeHandler);
+            
+            // Add click handler to redraw charts when tab is activated
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and panes
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding pane
+                    tab.classList.add('active');
+                    const tabName = tab.dataset.tab;
+                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                    
+                    if (tab.dataset.tab === 'pace-cardio') {
+                        // Re-render charts with a small delay to ensure container sizes are set
+                        setTimeout(() => {
+                            try {
+                                if (charts.charts.pace) charts.charts.pace.destroy();
+                                if (charts.charts.cardio) charts.charts.cardio.destroy();
+                                
+                                charts.createPaceChart('pace-chart', this.runs);
+                                charts.createCardioChart('cardio-chart', this.runs);
+                            } catch (error) {
+                                console.error('Error re-rendering pace charts:', error);
+                            }
+                        }, 100);
+                    }
+                });
             });
         }, 100);
     }

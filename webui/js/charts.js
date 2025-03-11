@@ -267,8 +267,12 @@ class ChartManager {
     createPaceChart(canvasId, data) {
         const ctx = document.getElementById(canvasId).getContext('2d');
         
+        // Certificar que o canvas está corretamente dimensionado
+        ctx.canvas.width = ctx.canvas.offsetWidth;
+        ctx.canvas.height = ctx.canvas.offsetHeight;
+        
         // Extract and convert pace data
-        const labels = data.map((_, index) => `Treino ${index + 1}`);
+        const labels = data.map(run => run.date);
         const paces = data.map(run => {
             const parts = run.avg_pace.split(':');
             const minutes = parseInt(parts[0], 10);
@@ -276,7 +280,15 @@ class ChartManager {
             return minutes + seconds / 60; // Convert to decimal minutes
         });
         
+        // Calcular dados para linhas de referência
+        const maxPace = Math.max(...paces) * 1.1; // 10% acima do máximo
+        const minPace = Math.min(...paces) * 0.9; // 10% abaixo do mínimo
+        
         // Create the chart (inverted y-axis since lower pace is better)
+        if (this.charts.pace) {
+            this.charts.pace.destroy();
+        }
+        
         this.charts.pace = new Chart(ctx, {
             type: 'line',
             data: {
@@ -284,14 +296,20 @@ class ChartManager {
                 datasets: [{
                     label: 'Ritmo (min/km)',
                     data: paces,
-                    borderColor: this.themeColors.primaryLight,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
+                    borderColor: this.themeColors.primary,
+                    backgroundColor: ctx => {
+                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+                        gradient.addColorStop(0, 'rgba(255, 103, 0, 0.2)');
+                        gradient.addColorStop(1, 'rgba(255, 103, 0, 0)');
+                        return gradient;
+                    },
+                    borderWidth: 3,
                     tension: 0.4,
                     pointBackgroundColor: this.themeColors.primaryLight,
                     pointBorderColor: this.themeColors.primaryDark,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    fill: true
                 }]
             },
             options: {
@@ -302,41 +320,76 @@ class ChartManager {
                         display: true,
                         text: 'Evolução do Ritmo',
                         font: {
-                            size: 16,
+                            size: 18,
                             weight: 'bold'
+                        },
+                        padding: {
+                            top: 20,
+                            bottom: 10
                         }
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { weight: 'bold', size: 14 },
+                        bodyFont: { size: 13 },
+                        padding: 12,
+                        cornerRadius: 8,
                         callbacks: {
                             title: (context) => {
                                 const index = context[0].dataIndex;
-                                return `Treino ${index + 1} (${data[index].date})`;
+                                return data[index].date;
                             },
                             label: (context) => {
                                 const paceDecimal = context.raw;
                                 const minutes = Math.floor(paceDecimal);
                                 const seconds = Math.round((paceDecimal - minutes) * 60);
-                                return `${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
+                                return `Ritmo: ${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
+                            },
+                            afterLabel: (context) => {
+                                const index = context.dataIndex;
+                                const run = data[index];
+                                return [
+                                    `Distância: ${run.distance.toFixed(2)} km`,
+                                    `Duração: ${this._formatDuration(run.duration)}`
+                                ];
                             }
                         }
+                    },
+                    legend: {
+                        display: false
                     }
                 },
                 scales: {
                     x: {
                         grid: {
-                            color: this.themeColors.chartGrid,
+                            color: (context) => context.tick.major ? this.themeColors.chartGrid : 'rgba(68, 68, 68, 0.5)',
                             borderColor: this.themeColors.chartGrid
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Data do Treino',
+                            font: { size: 13 }
                         }
                     },
                     y: {
                         reverse: true, // Lower is better for pace
+                        suggestedMin: minPace,
+                        suggestedMax: maxPace,
                         grid: {
                             color: this.themeColors.chartGrid,
                             borderColor: this.themeColors.chartGrid
                         },
                         title: {
                             display: true,
-                            text: 'Ritmo (min/km)'
+                            text: 'Ritmo (min/km)',
+                            font: { size: 13 }
                         },
                         ticks: {
                             callback: value => {
@@ -346,9 +399,23 @@ class ChartManager {
                             }
                         }
                     }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                elements: {
+                    line: {
+                        borderJoinStyle: 'round'
+                    }
                 }
             }
         });
+        
+        // Add trend line if we have enough data
+        if (paces.length >= 3) {
+            this._addTrendline(this.charts.pace, paces, true); // true indicates this is a pace chart
+        }
     }
 
     /**
@@ -359,8 +426,12 @@ class ChartManager {
     createCardioChart(canvasId, data) {
         const ctx = document.getElementById(canvasId).getContext('2d');
         
+        // Certificar que o canvas está corretamente dimensionado
+        ctx.canvas.width = ctx.canvas.offsetWidth;
+        ctx.canvas.height = ctx.canvas.offsetHeight;
+        
         // Extract BPM or elevation data - prioritize BPM if available
-        const labels = data.map((_, index) => `Treino ${index + 1}`);
+        const labels = data.map(run => run.date);
         
         let chartType = 'bpm';
         let chartData = data.map(run => run.avg_bpm).filter(v => v !== null && v !== undefined);
@@ -381,7 +452,12 @@ class ChartManager {
         const yAxisLabel = chartType === 'bpm' ? 'BPM' : 'Elevação (m)';
         const color = chartType === 'bpm' ? '#FF9966' : '#FF8533';
         
-        // Create the chart
+        // Clean up previous chart if it exists
+        if (this.charts.cardio) {
+            this.charts.cardio.destroy();
+        }
+        
+        // Create the chart with improved styling
         this.charts.cardio = new Chart(ctx, {
             type: chartType === 'bpm' ? 'line' : 'bar',
             data: {
@@ -389,13 +465,21 @@ class ChartManager {
                 datasets: [{
                     label: yAxisLabel,
                     data: chartData,
-                    backgroundColor: color,
-                    borderColor: chartType === 'bpm' ? color : undefined,
-                    borderWidth: chartType === 'bpm' ? 2 : 1,
+                    backgroundColor: chartType === 'bpm' ? 
+                        ctx => {
+                            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+                            gradient.addColorStop(0, 'rgba(255, 153, 102, 0.2)');
+                            gradient.addColorStop(1, 'rgba(255, 153, 102, 0)');
+                            return gradient;
+                        } : color,
+                    borderColor: color,
+                    borderWidth: chartType === 'bpm' ? 3 : 1,
                     tension: 0.4,
                     pointBackgroundColor: color,
-                    pointRadius: chartType === 'bpm' ? 4 : 0,
-                    pointHoverRadius: chartType === 'bpm' ? 6 : 0
+                    pointBorderColor: chartType === 'bpm' ? '#FF7733' : undefined,
+                    pointRadius: chartType === 'bpm' ? 5 : 0,
+                    pointHoverRadius: chartType === 'bpm' ? 8 : 0,
+                    fill: chartType === 'bpm'
                 }]
             },
             options: {
@@ -406,16 +490,52 @@ class ChartManager {
                         display: true,
                         text: title,
                         font: {
-                            size: 16,
+                            size: 18,
                             weight: 'bold'
+                        },
+                        padding: {
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { weight: 'bold', size: 14 },
+                        bodyFont: { size: 13 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            afterLabel: (context) => {
+                                const index = context.dataIndex;
+                                const run = data.filter(r => r[chartType === 'bpm' ? 'avg_bpm' : 'elevation_gain'] !== null)[index];
+                                if (run) {
+                                    return [
+                                        `Distância: ${run.distance.toFixed(2)} km`,
+                                        `Data: ${run.date}`
+                                    ];
+                                }
+                                return [];
+                            }
                         }
                     }
                 },
                 scales: {
                     x: {
                         grid: {
-                            color: this.themeColors.chartGrid,
+                            color: (context) => context.tick.major ? this.themeColors.chartGrid : 'rgba(68, 68, 68, 0.5)',
                             borderColor: this.themeColors.chartGrid
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Data do Treino',
+                            font: { size: 13 }
                         }
                     },
                     y: {
@@ -426,12 +546,22 @@ class ChartManager {
                         },
                         title: {
                             display: true,
-                            text: yAxisLabel
+                            text: yAxisLabel,
+                            font: { size: 13 }
                         }
                     }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
                 }
             }
         });
+        
+        // Add trend line for BPM data if we have enough points
+        if (chartType === 'bpm' && chartData.length >= 3) {
+            this._addTrendline(this.charts.cardio, chartData);
+        }
     }
 
     /**
@@ -511,8 +641,9 @@ class ChartManager {
      * @private
      * @param {Chart} chart - Chart.js instance
      * @param {Array} data - Data points
+     * @param {boolean} isPaceChart - Whether this is a pace chart (where lower is better)
      */
-    _addTrendline(chart, data) {
+    _addTrendline(chart, data, isPaceChart = false) {
         const n = data.length;
         if (n <= 1) return; // Need at least 2 points
         
@@ -538,11 +669,17 @@ class ChartManager {
             trendData.push(slope * i + intercept);
         }
         
+        // Determine color based on slope direction
+        // For pace charts, negative slope is good (getting faster)
+        // For other charts, positive slope is typically good (improving)
+        const isPositiveTrend = isPaceChart ? slope < 0 : slope > 0;
+        const trendColor = isPositiveTrend ? '#4CAF50' : '#FF5252'; // Green for positive, red for negative
+        
         // Add trendline dataset to the chart
         chart.data.datasets.push({
             label: 'Tendência',
             data: trendData,
-            borderColor: '#FFaa44',
+            borderColor: trendColor,
             backgroundColor: 'transparent',
             borderWidth: 2,
             borderDash: [5, 5],

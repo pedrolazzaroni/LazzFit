@@ -298,6 +298,93 @@ class UIComponents {
         spinner.className = 'loading-spinner';
         return spinner;
     }
+
+    /**
+     * Apply auto-formatting to input fields
+     * @param {HTMLElement} distanceField - Distance input element
+     * @param {HTMLElement} durationField - Duration input element
+     */
+    applyInputFormatting(distanceField, durationField) {
+        // Distance formatting (numeric with decimal point, max 2 decimal places)
+        distanceField.addEventListener('input', (e) => {
+            let value = e.target.value;
+            
+            // Remove non-numeric characters except dot and comma
+            value = value.replace(/[^\d.,]/g, '');
+            
+            // Replace comma with dot
+            value = value.replace(',', '.');
+            
+            // Limit to 2 decimal places
+            const parts = value.split('.');
+            if (parts.length > 1) {
+                parts[1] = parts[1].slice(0, 2);
+                value = parts.join('.');
+            }
+            
+            e.target.value = value;
+        });
+        
+        // Duration formatting (integer, with hour/minute display)
+        durationField.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^\d]/g, '');
+            
+            if (value.length > 0) {
+                // Convert to integer
+                const minutes = parseInt(value, 10);
+                
+                // Format as hours and minutes if over 60 minutes
+                if (minutes >= 60) {
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    
+                    // Show formatted time below the input
+                    const formGroup = durationField.closest('.form-group');
+                    let formatDisplay = formGroup.querySelector('.duration-format');
+                    
+                    if (!formatDisplay) {
+                        formatDisplay = document.createElement('div');
+                        formatDisplay.className = 'duration-format';
+                        formatDisplay.style.cssText = 'font-size: 12px; color: #aaa; margin-top: 5px;';
+                        formGroup.appendChild(formatDisplay);
+                    }
+                    
+                    formatDisplay.textContent = `${hours}h ${mins}min`;
+                } else {
+                    // Remove format display if less than 60 minutes
+                    const formGroup = durationField.closest('.form-group');
+                    const formatDisplay = formGroup.querySelector('.duration-format');
+                    if (formatDisplay) formatDisplay.remove();
+                }
+            }
+            
+            e.target.value = value;
+        });
+        
+        // Remove spinner buttons from number inputs
+        [distanceField, durationField].forEach(field => {
+            field.addEventListener('mousewheel', (e) => e.preventDefault());
+            field.addEventListener('keydown', (e) => {
+                // Allow: backspace, delete, tab, escape, enter
+                if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+                    // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                    (e.keyCode === 65 && e.ctrlKey === true) ||
+                    (e.keyCode === 67 && e.ctrlKey === true) ||
+                    (e.keyCode === 86 && e.ctrlKey === true) ||
+                    (e.keyCode === 88 && e.ctrlKey === true) ||
+                    // Allow: home, end, left, right
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                    return;
+                }
+                // Stop if not a number
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
+                    (e.keyCode < 96 || e.keyCode > 105) && 
+                    e.keyCode !== 190 && e.keyCode !== 188) { // Allow period and comma
+                    e.preventDefault();
+                }
+            });
+        });
+    }
 }
 
 // Create and export a singleton instance
