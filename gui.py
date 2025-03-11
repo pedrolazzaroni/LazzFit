@@ -15,7 +15,7 @@ class LazzFitApp(ctk.CTk):
         self.geometry("900x600")
         self.resizable(True, True)
         
-        # Cores
+        # Cores - definição explícita das cores laranja e preto
         self.orange = "#FF6700"
         self.black = "#000000"
         self.dark_gray = "#333333"
@@ -33,6 +33,28 @@ class LazzFitApp(ctk.CTk):
     def _set_appearance(self):
         """Configurações visuais personalizadas"""
         ctk.set_widget_scaling(1.0)  # Escala dos widgets
+        
+        # Configurar o estilo da tabela para combinar com o tema
+        style = tk.ttk.Style()
+        style.theme_use("clam")  # Usar o tema clam que é mais personalizável
+        
+        # Configuração do Treeview (tabela)
+        style.configure("Treeview", 
+                        background=self.dark_gray,
+                        foreground="white",
+                        fieldbackground=self.dark_gray,
+                        rowheight=25)
+        
+        # Configuração do cabeçalho da tabela
+        style.configure("Treeview.Heading", 
+                        background=self.orange,
+                        foreground="white",
+                        font=('Arial', 10, 'bold'))
+        
+        # Configuração para quando um item é selecionado
+        style.map('Treeview', 
+                  background=[('selected', self.orange)],
+                  foreground=[('selected', 'white')])
         
     def _create_widgets(self):
         """Cria todos os widgets da aplicação"""
