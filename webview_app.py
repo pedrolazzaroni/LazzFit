@@ -94,7 +94,7 @@ class LazzFitAPI:
         """Export all runs to an Excel file"""
         try:
             # Verificar se o módulo Excel está disponível
-            if not self.db.EXCEL_AVAILABLE:
+            if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
                 webview.windows[0].evaluate_js("""
                     app.showNotification(
                         'O módulo openpyxl não está instalado. A exportação para Excel não está disponível.',
@@ -103,55 +103,84 @@ class LazzFitAPI:
                 """)
                 return False
                 
-            # Create a file save dialog
+            # Show dialog to ask where to save
             file_path = self._get_save_filepath("Excel Files", ".xlsx")
             if not file_path:
                 return False
-                
+            
             # Make sure it has the correct extension
             if not file_path.lower().endswith((".xlsx", ".xls")):
                 file_path += ".xlsx"
-                
+            
+            # Update UI to show exporting status
+            webview.windows[0].evaluate_js("""
+                app.showNotification('Exportando dados para Excel...', 'info');
+            """)
+            
             # Export to Excel
             success = self.db.export_runs_to_xlsx(file_path)
             
-            # Mostrar mensagem de sucesso na interface
+            # Notify UI of result
             if success:
                 webview.windows[0].evaluate_js(f"""
-                    app.showNotification(
-                        'Dados exportados com sucesso para {file_path}',
-                        'success'
-                    );
+                    app.showNotification('Dados exportados com sucesso para: {os.path.basename(file_path)}', 'success');
                 """)
-                
+            else:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification('Falha ao exportar dados para Excel.', 'error');
+                """)
+            
             return success
         except Exception as e:
             print(f"Error exporting to Excel: {str(e)}")
+            webview.windows[0].evaluate_js(f"""
+                app.showNotification('Erro ao exportar: {str(e)}', 'error');
+            """)
             return False
     
     def export_to_csv(self):
         """Export all runs to a CSV file"""
         try:
-            # Create a file save dialog
+            # Show dialog to ask where to save
             file_path = self._get_save_filepath("CSV Files", ".csv")
             if not file_path:
                 return False
-                
+            
             # Make sure it has the correct extension
             if not file_path.lower().endswith(".csv"):
                 file_path += ".csv"
-                
+            
+            # Update UI to show exporting status
+            webview.windows[0].evaluate_js("""
+                app.showNotification('Exportando dados para CSV...', 'info');
+            """)
+            
             # Export to CSV
-            return self.db.export_runs_to_csv(file_path)
+            success = self.db.export_runs_to_csv(file_path)
+            
+            # Notify UI of result
+            if success:
+                webview.windows[0].evaluate_js(f"""
+                    app.showNotification('Dados exportados com sucesso para: {os.path.basename(file_path)}', 'success');
+                """)
+            else:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification('Falha ao exportar dados para CSV.', 'error');
+                """)
+            
+            return success
         except Exception as e:
             print(f"Error exporting to CSV: {str(e)}")
+            webview.windows[0].evaluate_js(f"""
+                app.showNotification('Erro ao exportar: {str(e)}', 'error');
+            """)
             return False
     
     def export_selected_to_excel(self, run_ids):
         """Export selected runs to an Excel file"""
         try:
             # Verificar se o módulo Excel está disponível
-            if not self.db.EXCEL_AVAILABLE:
+            if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
                 webview.windows[0].evaluate_js("""
                     app.showNotification(
                         'O módulo openpyxl não está instalado. A exportação para Excel não está disponível.',
@@ -160,81 +189,115 @@ class LazzFitAPI:
                 """)
                 return False
                 
-            # Create a file save dialog
+            # Show dialog to ask where to save
             file_path = self._get_save_filepath("Excel Files", ".xlsx")
             if not file_path:
                 return False
-                
+            
             # Make sure it has the correct extension
             if not file_path.lower().endswith((".xlsx", ".xls")):
                 file_path += ".xlsx"
-                
+            
+            # Update UI to show exporting status
+            webview.windows[0].evaluate_js("""
+                app.showNotification('Exportando treinos selecionados para Excel...', 'info');
+            """)
+            
             # Export to Excel
             success = self.db.export_runs_to_xlsx(file_path, run_ids)
             
-            # Mostrar mensagem de sucesso na interface
+            # Notify UI of result
             if success:
                 webview.windows[0].evaluate_js(f"""
-                    app.showNotification(
-                        'Treinos selecionados exportados com sucesso para {file_path}',
-                        'success'
-                    );
+                    app.showNotification('Treinos selecionados exportados com sucesso para: {os.path.basename(file_path)}', 'success');
                 """)
-                
+            else:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification('Falha ao exportar treinos selecionados.', 'error');
+                """)
+            
             return success
         except Exception as e:
             print(f"Error exporting selected runs to Excel: {str(e)}")
+            webview.windows[0].evaluate_js(f"""
+                app.showNotification('Erro ao exportar: {str(e)}', 'error');
+            """)
             return False
 
     def export_selected_to_csv(self, run_ids):
         """Export selected runs to a CSV file"""
         try:
-            # Create a file save dialog
+            # Show dialog to ask where to save
             file_path = self._get_save_filepath("CSV Files", ".csv")
             if not file_path:
                 return False
-                
+            
             # Make sure it has the correct extension
             if not file_path.lower().endswith(".csv"):
                 file_path += ".csv"
-                
+            
+            # Update UI to show exporting status
+            webview.windows[0].evaluate_js("""
+                app.showNotification('Exportando treinos selecionados para CSV...', 'info');
+            """)
+            
             # Export to CSV
-            return self.db.export_runs_to_csv(file_path, run_ids)
+            success = self.db.export_runs_to_csv(file_path, run_ids)
+            
+            # Notify UI of result
+            if success:
+                webview.windows[0].evaluate_js(f"""
+                    app.showNotification('Treinos selecionados exportados com sucesso para: {os.path.basename(file_path)}', 'success');
+                """)
+            else:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification('Falha ao exportar treinos selecionados.', 'error');
+                """)
+            
+            return success
         except Exception as e:
             print(f"Error exporting selected runs to CSV: {str(e)}")
+            webview.windows[0].evaluate_js(f"""
+                app.showNotification('Erro ao exportar: {str(e)}', 'error');
+            """)
             return False
     
     def _get_save_filepath(self, file_type_desc, file_ext):
         """Open a native file dialog to get save filepath"""
         def run_dialog():
             # Use tkinter's file dialog since webview dialogs don't work well for saving
-            from tkinter import Tk, filedialog
             root = Tk()
             root.withdraw()  # Hide the main window
+            root.attributes('-topmost', True)  # Ensure dialog appears on top
+            
             file_path = filedialog.asksaveasfilename(
                 title="Salvar Como",
                 filetypes=[(file_type_desc, f"*{file_ext}"), ("All Files", "*.*")],
                 defaultextension=file_ext
             )
+            
             # Write chosen path to a temporary file to avoid threading issues
-            with open("temp_path.txt", "w") as f:
+            with open("temp_path.txt", "w", encoding="utf-8") as f:
                 f.write(file_path if file_path else "")
             root.destroy()
             
-        # File dialogs need to run in the main thread
+        # File dialogs need to run in the main thread in a separate thread due to tkinter limitations
         dialog_thread = threading.Thread(target=run_dialog)
         dialog_thread.start()
-        dialog_thread.join()  # Wait for the dialog to complete
+        dialog_thread.join(timeout=60)  # Wait with timeout to avoid hanging
         
         # Read path from temporary file
         try:
-            with open("temp_path.txt", "r") as f:
+            with open("temp_path.txt", "r", encoding="utf-8") as f:
                 file_path = f.read().strip()
             
             # Clean up the temporary file
-            os.remove("temp_path.txt")
+            if os.path.exists("temp_path.txt"):
+                os.remove("temp_path.txt")
+                
             return file_path
-        except:
+        except Exception as e:
+            print(f"Error getting save path: {e}")
             return None
         
     def _format_run_data(self, run):

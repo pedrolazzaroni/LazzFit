@@ -305,82 +305,137 @@ class UIComponents {
      * @param {HTMLElement} durationField - Duration input element
      */
     applyInputFormatting(distanceField, durationField) {
-        // Distance formatting (numeric with decimal point, max 2 decimal places)
+        // Distance formatting (XX.XX)
         distanceField.addEventListener('input', (e) => {
             let value = e.target.value;
             
-            // Remove non-numeric characters except dot and comma
-            value = value.replace(/[^\d.,]/g, '');
+            // Remove caracteres não numéricos exceto ponto
+            value = value.replace(/[^\d.]/g, '');
             
-            // Replace comma with dot
-            value = value.replace(',', '.');
-            
-            // Limit to 2 decimal places
+            // Permitir apenas um ponto decimal
             const parts = value.split('.');
-            if (parts.length > 1) {
-                parts[1] = parts[1].slice(0, 2);
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            
+            // Garantir sempre duas casas decimais
+            if (parts.length === 2) {
+                parts[1] = parts[1].slice(0, 2); // Limitar a 2 casas decimais
                 value = parts.join('.');
             }
             
             e.target.value = value;
+            
+            // Adicionar formatação visual 
+            if (value.length > 0) {
+                // Remover a formatação existente se houver
+                const formGroup = distanceField.closest('.form-group');
+                let formattedDisplay = formGroup.querySelector('.formatted-display');
+                if (!formattedDisplay) {
+                    formattedDisplay = document.createElement('div');
+                    formattedDisplay.className = 'formatted-display';
+                    formattedDisplay.style.cssText = 'font-size: 12px; color: #FF8533; margin-top: 5px;';
+                    formGroup.appendChild(formattedDisplay);
+                }
+                
+                // Formatar para XX.XX
+                let formattedValue = formatters.formatDistance(value || 0);
+                formattedDisplay.textContent = `Valor formatado: ${formattedValue} km`;
+            }
         });
         
-        // Duration formatting (integer, with hour/minute display)
+        // Duration formatting with HH:MM:SS or MM:SS
         durationField.addEventListener('input', (e) => {
-            let value = e.target.value.replace(/[^\d]/g, '');
+            let value = e.target.value;
             
-            if (value.length > 0) {
-                // Convert to integer
-                const minutes = parseInt(value, 10);
-                
-                // Format as hours and minutes if over 60 minutes
-                if (minutes >= 60) {
-                    const hours = Math.floor(minutes / 60);
-                    const mins = minutes % 60;
-                    
-                    // Show formatted time below the input
-                    const formGroup = durationField.closest('.form-group');
-                    let formatDisplay = formGroup.querySelector('.duration-format');
-                    
-                    if (!formatDisplay) {
-                        formatDisplay = document.createElement('div');
-                        formatDisplay.className = 'duration-format';
-                        formatDisplay.style.cssText = 'font-size: 12px; color: #aaa; margin-top: 5px;';
-                        formGroup.appendChild(formatDisplay);
-                    }
-                    
-                    formatDisplay.textContent = `${hours}h ${mins}min`;
-                } else {
-                    // Remove format display if less than 60 minutes
-                    const formGroup = durationField.closest('.form-group');
-                    const formatDisplay = formGroup.querySelector('.duration-format');
-                    if (formatDisplay) formatDisplay.remove();
-                }
+            // Allow only digits and colons
+            value = value.replace(/[^\d:]/g, '');
+            
+            // Apply HH:MM:SS or MM:SS formatting logic
+            const digitParts = value.replace(/:/g, '').split('');
+            let formattedTime = '';
+            
+            if (digitParts.length <= 2) {
+                // SS format - just show seconds
+                formattedTime = digitParts.join('').padStart(2, '0');
+            } else if (digitParts.length <= 4) {
+                // MM:SS format
+                const minutes = digitParts.slice(0, -2).join('').padStart(2, '0');
+                const seconds = digitParts.slice(-2).join('').padStart(2, '0');
+                formattedTime = `${minutes}:${seconds}`;
+            } else {
+                // HH:MM:SS format
+                const length = digitParts.length;
+                const seconds = digitParts.slice(-2).join('').padStart(2, '0');
+                const minutes = digitParts.slice(-4, -2).join('').padStart(2, '0');
+                const hours = digitParts.slice(0, -4).join('').padStart(2, '0');
+                formattedTime = `${hours}:${minutes}:${seconds}`;
             }
             
-            e.target.value = value;
+            // Force limited length for the entered value
+            if (digitParts.length > 6) {
+                // Limit to 6 digits (2 for hour, 2 for min, 2 for sec)
+                formattedTime = formattedTime.slice(-8);
+            }
+            
+            // Show the formatting hint
+            const formGroup = durationField.closest('.form-group');
+            let formattedDisplay = formGroup.querySelector('.formatted-display');
+            
+            if (!formattedDisplay) {
+                formattedDisplay = document.createElement('div');
+                formattedDisplay.className = 'formatted-display';
+                formattedDisplay.style.cssText = 'font-size: 12px; color: #FF8533; margin-top: 5px;';
+                formGroup.appendChild(formattedDisplay);
+            }
+            
+            // Convert to seconds for internal use
+            const totalSeconds = formatters.parseTimeToSeconds(formattedTime);
+            
+            // Convert to minutes for database storage
+            const totalMinutes = formatters.secondsToMinutes(totalSeconds);
+            
+            // Show human-readable format
+            const readableFormat = formatters.formatMinutes(totalMinutes);
+            
+            formattedDisplay.innerHTML = `Formato: <b>${formattedTime}</b> (${readableFormat})`;
+            
+            // Store minutes value for database
+            durationField.dataset.minutes = totalMinutes.toString();
+            
+            // Update the input value to show formatted time
+            e.target.value = formattedTime;
         });
         
-        // Remove spinner buttons from number inputs
+        // Remove spinner buttons from number inputs and add special handlers
         [distanceField, durationField].forEach(field => {
-            field.addEventListener('mousewheel', (e) => e.preventDefault());
+            field.addEventListener('wheel', (e) => e.preventDefault());
+            
             field.addEventListener('keydown', (e) => {
-                // Allow: backspace, delete, tab, escape, enter
-                if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+                // Allow: navigation, backspace, delete, tab, escape, enter
+                if ([46, 8, 9, 27, 13, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
                     // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
                     (e.keyCode === 65 && e.ctrlKey === true) ||
                     (e.keyCode === 67 && e.ctrlKey === true) ||
                     (e.keyCode === 86 && e.ctrlKey === true) ||
-                    (e.keyCode === 88 && e.ctrlKey === true) ||
-                    // Allow: home, end, left, right
-                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                    (e.keyCode === 88 && e.ctrlKey === true)) {
                     return;
                 }
-                // Stop if not a number
-                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
-                    (e.keyCode < 96 || e.keyCode > 105) && 
-                    e.keyCode !== 190 && e.keyCode !== 188) { // Allow period and comma
-                    e.preventDefault();
+                
+                if (field === durationField) {
+                    // For duration, allow numbers and colon
+                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
+                        (e.keyCode < 96 || e.keyCode > 105) && 
+                        e.keyCode !== 186 && e.keyCode !== 59) { // Allow colon
+                        e.preventDefault();
+                    }
+                } else {
+                    // For distance, allow numbers and period
+                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && 
+                        (e.keyCode < 96 || e.keyCode > 105) && 
+                        e.keyCode !== 190 && e.keyCode !== 110) { // Allow period
+                        e.preventDefault();
+                    }
                 }
             });
         });

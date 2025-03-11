@@ -265,30 +265,47 @@ class ChartManager {
      * @param {Array} data - Run data array
      */
     createPaceChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
         
-        // Certificar que o canvas está corretamente dimensionado
-        ctx.canvas.width = ctx.canvas.offsetWidth;
-        ctx.canvas.height = ctx.canvas.offsetHeight;
+        const canvas = ctx.getContext('2d');
         
-        // Extract and convert pace data
-        const labels = data.map(run => run.date);
-        const paces = data.map(run => {
-            const parts = run.avg_pace.split(':');
-            const minutes = parseInt(parts[0], 10);
-            const seconds = parseInt(parts[1], 10);
-            return minutes + seconds / 60; // Convert to decimal minutes
-        });
+        // Garantir que o canvas tem as dimensões corretas
+        canvas.canvas.width = canvas.canvas.offsetWidth;
+        canvas.canvas.height = canvas.canvas.offsetHeight;
         
-        // Calcular dados para linhas de referência
-        const maxPace = Math.max(...paces) * 1.1; // 10% acima do máximo
-        const minPace = Math.min(...paces) * 0.9; // 10% abaixo do mínimo
-        
-        // Create the chart (inverted y-axis since lower pace is better)
+        // Destruir o gráfico anterior se existir
         if (this.charts.pace) {
             this.charts.pace.destroy();
         }
         
+        // Extract and convert pace data (use most recent 20 runs for better visualization)
+        const recentRuns = [...data].slice(-20);
+        const labels = recentRuns.map(run => run.date);
+        
+        // Convert pace strings like "5:30" to decimal minutes (5.5)
+        const paces = recentRuns.map(run => {
+            const parts = run.avg_pace.split(':');
+            if (parts.length !== 2) return 0;
+            
+            const minutes = parseInt(parts[0], 10) || 0;
+            const seconds = parseInt(parts[1], 10) || 0;
+            return minutes + seconds / 60; // Convert to decimal minutes
+        });
+        
+        // Filtrar valores inválidos
+        const validPaces = paces.filter(pace => !isNaN(pace) && pace > 0);
+        
+        if (validPaces.length === 0) {
+            this._renderNoDataMessage(canvas, 'Sem dados de ritmo disponíveis');
+            return;
+        }
+        
+        // Calcular limites para escala Y
+        const minPace = Math.max(0, Math.min(...validPaces) * 0.9); // 10% abaixo do mínimo, mas não menos que 0
+        const maxPace = Math.max(...validPaces) * 1.1; // 10% acima do máximo
+        
+        // Create the chart
         this.charts.pace = new Chart(ctx, {
             type: 'line',
             data: {
@@ -299,22 +316,22 @@ class ChartManager {
                     borderColor: this.themeColors.primary,
                     backgroundColor: ctx => {
                         const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-                        gradient.addColorStop(0, 'rgba(255, 103, 0, 0.2)');
+                        gradient.addColorStop(0, 'rgba(255, 103, 0, 0.3)');
                         gradient.addColorStop(1, 'rgba(255, 103, 0, 0)');
                         return gradient;
                     },
                     borderWidth: 3,
-                    tension: 0.4,
+                    tension: 0.3,
                     pointBackgroundColor: this.themeColors.primaryLight,
                     pointBorderColor: this.themeColors.primaryDark,
-                    pointRadius: 6,
+                    pointRadius: 5,
                     pointHoverRadius: 8,
                     fill: true
                 }]
             },
             options: {
-                responsive: true,
                 maintainAspectRatio: false,
+                responsive: true,
                 plugins: {
                     title: {
                         display: true,
@@ -329,25 +346,20 @@ class ChartManager {
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: { weight: 'bold', size: 14 },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 8,
                         callbacks: {
                             title: (context) => {
                                 const index = context[0].dataIndex;
-                                return data[index].date;
+                                return recentRuns[index].date;
                             },
                             label: (context) => {
-                                const paceDecimal = context.raw;
-                                const minutes = Math.floor(paceDecimal);
-                                const seconds = Math.round((paceDecimal - minutes) * 60);
+                                const pace = context.raw;
+                                const minutes = Math.floor(pace);
+                                const seconds = Math.round((pace - minutes) * 60);
                                 return `Ritmo: ${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
                             },
                             afterLabel: (context) => {
                                 const index = context.dataIndex;
-                                const run = data[index];
+                                const run = recentRuns[index];
                                 return [
                                     `Distância: ${run.distance.toFixed(2)} km`,
                                     `Duração: ${this._formatDuration(run.duration)}`
@@ -366,30 +378,21 @@ class ChartManager {
                             borderColor: this.themeColors.chartGrid
                         },
                         ticks: {
+                            maxTicksLimit: 10,
                             maxRotation: 45,
                             minRotation: 45,
                             font: {
                                 size: 11
                             }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Data do Treino',
-                            font: { size: 13 }
                         }
                     },
                     y: {
                         reverse: true, // Lower is better for pace
-                        suggestedMin: minPace,
-                        suggestedMax: maxPace,
+                        min: minPace,
+                        max: maxPace,
                         grid: {
                             color: this.themeColors.chartGrid,
                             borderColor: this.themeColors.chartGrid
-                        },
-                        title: {
-                            display: true,
-                            text: 'Ritmo (min/km)',
-                            font: { size: 13 }
                         },
                         ticks: {
                             callback: value => {
@@ -399,21 +402,12 @@ class ChartManager {
                             }
                         }
                     }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                elements: {
-                    line: {
-                        borderJoinStyle: 'round'
-                    }
                 }
             }
         });
         
         // Add trend line if we have enough data
-        if (paces.length >= 3) {
+        if (validPaces.length >= 3) {
             this._addTrendline(this.charts.pace, paces, true); // true indicates this is a pace chart
         }
     }
@@ -424,67 +418,81 @@ class ChartManager {
      * @param {Array} data - Run data array
      */
     createCardioChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
         
-        // Certificar que o canvas está corretamente dimensionado
-        ctx.canvas.width = ctx.canvas.offsetWidth;
-        ctx.canvas.height = ctx.canvas.offsetHeight;
+        const canvas = ctx.getContext('2d');
         
-        // Extract BPM or elevation data - prioritize BPM if available
-        const labels = data.map(run => run.date);
+        // Garantir que o canvas tem as dimensões corretas
+        canvas.canvas.width = canvas.canvas.offsetWidth;
+        canvas.canvas.height = canvas.canvas.offsetHeight;
         
-        let chartType = 'bpm';
-        let chartData = data.map(run => run.avg_bpm).filter(v => v !== null && v !== undefined);
-        
-        // If no BPM data, try elevation data
-        if (chartData.length === 0) {
-            chartType = 'elevation';
-            chartData = data.map(run => run.elevation_gain).filter(v => v !== null && v !== undefined);
-        }
-        
-        // If still no data, show message
-        if (chartData.length === 0) {
-            this._renderNoDataMessage(ctx, 'Sem dados de BPM ou Elevação');
-            return;
-        }
-        
-        const title = chartType === 'bpm' ? 'BPM Médio por Treino' : 'Elevação por Treino';
-        const yAxisLabel = chartType === 'bpm' ? 'BPM' : 'Elevação (m)';
-        const color = chartType === 'bpm' ? '#FF9966' : '#FF8533';
-        
-        // Clean up previous chart if it exists
+        // Destruir o gráfico anterior se existir
         if (this.charts.cardio) {
             this.charts.cardio.destroy();
         }
         
-        // Create the chart with improved styling
+        // Extract data (use most recent 20 runs for better visualization)
+        const recentRuns = [...data].slice(-20);
+        const labels = recentRuns.map(run => run.date);
+        
+        // Try BPM data first
+        let chartType = 'bpm';
+        let chartData = recentRuns.map(run => run.avg_bpm).map(Number);
+        
+        // If no BPM data, try elevation data
+        if (chartData.filter(val => !isNaN(val) && val > 0).length === 0) {
+            chartType = 'elevation';
+            chartData = recentRuns.map(run => run.elevation_gain).map(Number);
+        }
+        
+        // Filter out invalid values
+        chartData = chartData.map((val, i) => {
+            // Replace NaN with null to create gaps in the chart
+            return isNaN(val) || val <= 0 ? null : val;
+        });
+        
+        // Check if we have any valid data
+        const hasValidData = chartData.some(val => val !== null);
+        
+        if (!hasValidData) {
+            this._renderNoDataMessage(canvas, 'Sem dados de BPM ou Elevação disponíveis');
+            return;
+        }
+        
+        const title = chartType === 'bpm' ? 'Frequência Cardíaca Média' : 'Elevação por Treino';
+        const yAxisLabel = chartType === 'bpm' ? 'BPM' : 'Elevação (m)';
+        const color = chartType === 'bpm' ? '#FF9966' : '#FF8533';
+        
+        // Create the chart
         this.charts.cardio = new Chart(ctx, {
             type: chartType === 'bpm' ? 'line' : 'bar',
             data: {
-                labels: labels.slice(0, chartData.length),
+                labels: labels,
                 datasets: [{
                     label: yAxisLabel,
                     data: chartData,
                     backgroundColor: chartType === 'bpm' ? 
                         ctx => {
                             const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-                            gradient.addColorStop(0, 'rgba(255, 153, 102, 0.2)');
+                            gradient.addColorStop(0, 'rgba(255, 153, 102, 0.3)');
                             gradient.addColorStop(1, 'rgba(255, 153, 102, 0)');
                             return gradient;
                         } : color,
                     borderColor: color,
                     borderWidth: chartType === 'bpm' ? 3 : 1,
-                    tension: 0.4,
+                    tension: 0.3,
                     pointBackgroundColor: color,
-                    pointBorderColor: chartType === 'bpm' ? '#FF7733' : undefined,
-                    pointRadius: chartType === 'bpm' ? 5 : 0,
-                    pointHoverRadius: chartType === 'bpm' ? 8 : 0,
-                    fill: chartType === 'bpm'
+                    pointBorderColor: '#FF7733',
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    fill: chartType === 'bpm',
+                    spanGaps: true // Connect lines over null values
                 }]
             },
             options: {
-                responsive: true,
                 maintainAspectRatio: false,
+                responsive: true,
                 plugins: {
                     title: {
                         display: true,
@@ -499,22 +507,18 @@ class ChartManager {
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: { weight: 'bold', size: 14 },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 8,
                         callbacks: {
+                            title: (context) => {
+                                const index = context[0].dataIndex;
+                                return recentRuns[index].date;
+                            },
                             afterLabel: (context) => {
                                 const index = context.dataIndex;
-                                const run = data.filter(r => r[chartType === 'bpm' ? 'avg_bpm' : 'elevation_gain'] !== null)[index];
-                                if (run) {
-                                    return [
-                                        `Distância: ${run.distance.toFixed(2)} km`,
-                                        `Data: ${run.date}`
-                                    ];
-                                }
-                                return [];
+                                const run = recentRuns[index];
+                                return [
+                                    `Distância: ${run.distance.toFixed(2)} km`,
+                                    `Duração: ${this._formatDuration(run.duration)}`
+                                ];
                             }
                         }
                     }
@@ -526,16 +530,12 @@ class ChartManager {
                             borderColor: this.themeColors.chartGrid
                         },
                         ticks: {
+                            maxTicksLimit: 10,
                             maxRotation: 45,
                             minRotation: 45,
                             font: {
                                 size: 11
                             }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Data do Treino',
-                            font: { size: 13 }
                         }
                     },
                     y: {
@@ -543,24 +543,18 @@ class ChartManager {
                         grid: {
                             color: this.themeColors.chartGrid,
                             borderColor: this.themeColors.chartGrid
-                        },
-                        title: {
-                            display: true,
-                            text: yAxisLabel,
-                            font: { size: 13 }
                         }
                     }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
                 }
             }
         });
         
-        // Add trend line for BPM data if we have enough points
-        if (chartType === 'bpm' && chartData.length >= 3) {
-            this._addTrendline(this.charts.cardio, chartData);
+        // Add trend line for BPM data if we have enough valid points
+        if (chartType === 'bpm') {
+            const validData = chartData.filter(val => val !== null);
+            if (validData.length >= 3) {
+                this._addTrendline(this.charts.cardio, chartData);
+            }
         }
     }
 

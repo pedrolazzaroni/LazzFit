@@ -424,7 +424,7 @@ class App {
         const today = new Date().toISOString().split('T')[0];
         dateField.value = today;
         
-        // Apply input formatting
+        // Apply input formatting with our improved formatter
         components.applyInputFormatting(distanceField, durationField);
         
         // Load workout types
@@ -456,8 +456,14 @@ class App {
                     runIdField.value = runData.id;
                     dateField.value = runData.date;
                     workoutTypeField.value = runData.workout_type || workoutTypes[0];
+                    
+                    // Formatar a distância e a duração manualmente para acionar o evento de formatação
                     distanceField.value = runData.distance;
+                    distanceField.dispatchEvent(new Event('input'));
+                    
                     durationField.value = runData.duration;
+                    durationField.dataset.minutes = runData.duration;
+                    durationField.dispatchEvent(new Event('input'));
                     
                     if (runData.avg_bpm) avgBpmField.value = runData.avg_bpm;
                     if (runData.max_bpm) maxBpmField.value = runData.max_bpm;
@@ -521,7 +527,8 @@ class App {
         const runData = {
             date: dateField.value,
             distance: parseFloat(distanceField.value),
-            duration: parseInt(durationField.value),
+            // Use o valor em minutos do dataset se disponível, caso contrário, use o valor do campo
+            duration: durationField.dataset.minutes ? parseInt(durationField.dataset.minutes) : parseInt(durationField.value),
             workout_type: workoutTypeField.value,
             avg_bpm: avgBpmField.value ? parseInt(avgBpmField.value) : null,
             max_bpm: maxBpmField.value ? parseInt(maxBpmField.value) : null,
