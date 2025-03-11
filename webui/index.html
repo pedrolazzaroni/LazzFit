@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LazzFit - Gerenciador de Treinos</title>
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/animations.css">
+    <link rel="stylesheet" href="./css/notification.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="logo-container">
+                <h1 class="logo">LazzFit</h1>
+                <p class="subtitle">Gerenciador de Treinos</p>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active" data-view="dashboard">
+                    <span class="material-icons-round">dashboard</span>
+                    Dashboard
+                </li>
+                <li class="nav-item" data-view="runs">
+                    <span class="material-icons-round">format_list_bulleted</span>
+                    Treinos
+                </li>
+                <li class="nav-item" data-view="add-run">
+                    <span class="material-icons-round">add_circle</span>
+                    Novo Treino
+                </li>
+                <li class="nav-item" data-view="statistics">
+                    <span class="material-icons-round">bar_chart</span>
+                    Estatísticas
+                </li>
+            </ul>
+            <div class="version">v1.2.0</div>
+        </nav>
+        
+        <main class="content">
+            <!-- Conteúdo será carregado dinamicamente -->
+            <div id="view-container"></div>
+        </main>
+    </div>
+
+    <!-- Templates dos componentes -->
+    <template id="dashboard-template">
+        <div class="dashboard-view animate-fade-in">
+            <header class="section-header">
+                <h2>Dashboard</h2>
+                <div class="date-display">Hoje: <span id="current-date"></span></div>
+            </header>
+            
+            <div class="stats-cards">
+                <div class="stat-card animate-slide-in" style="--delay: 0.1s">
+                    <span class="material-icons-round icon">directions_run</span>
+                    <h3>Total de Corridas</h3>
+                    <div class="value" id="total-runs">0</div>
+                </div>
+                <div class="stat-card animate-slide-in" style="--delay: 0.2s">
+                    <span class="material-icons-round icon">straighten</span>
+                    <h3>Distância Total</h3>
+                    <div class="value" id="total-distance">0 km</div>
+                </div>
+                <div class="stat-card animate-slide-in" style="--delay: 0.3s">
+                    <span class="material-icons-round icon">timer</span>
+                    <h3>Tempo Total</h3>
+                    <div class="value" id="total-time">0h 0m</div>
+                </div>
+                <div class="stat-card animate-slide-in" style="--delay: 0.4s">
+                    <span class="material-icons-round icon">speed</span>
+                    <h3>Ritmo Médio</h3>
+                    <div class="value" id="avg-pace">0:00 min/km</div>
+                </div>
+            </div>
+            
+            <div class="chart-container animate-slide-up">
+                <h3>Últimos Treinos</h3>
+                <canvas id="recent-runs-chart"></canvas>
+            </div>
+        </div>
+    </template>
+
+    <template id="run-card-template">
+        <div class="run-card">
+            <div class="card-header">
+                <div class="date-badge">
+                    <span class="material-icons-round">event</span>
+                    <span class="date-value"></span>
+                </div>
+                <div class="workout-type"></div>
+            </div>
+            
+            <div class="card-body">
+                <div class="stat-group">
+                    <div class="stat">
+                        <span class="material-icons-round">directions_run</span>
+                        <span class="distance"></span> km
+                    </div>
+                    <div class="stat">
+                        <span class="material-icons-round">timer</span>
+                        <span class="duration"></span>
+                    </div>
+                    <div class="stat">
+                        <span class="material-icons-round">speed</span>
+                        <span class="pace"></span> min/km
+                    </div>
+                </div>
+                
+                <div class="health-stats"></div>
+            </div>
+            
+            <div class="card-actions">
+                <button class="action-btn edit-btn">
+                    <span class="material-icons-round">edit</span>
+                </button>
+                <button class="action-btn delete-btn">
+                    <span class="material-icons-round">delete</span>
+                </button>
+                <button class="action-btn expand-btn">
+                    <span class="material-icons-round">expand_more</span>
+                </button>
+            </div>
+            
+            <div class="card-expanded">
+                <!-- Conteúdo expandido -->
+            </div>
+        </div>
+    </template>
+
+    <template id="runs-template">
+        <div class="runs-view animate-fade-in">
+            <header class="section-header">
+                <h2>Seus Treinos</h2>
+                <div class="action-buttons">
+                    <button id="export-csv-btn" class="action-btn">
+                        <span class="material-icons-round">file_download</span>
+                        Exportar CSV
+                    </button>
+                    <button id="export-excel-btn" class="action-btn">
+                        <span class="material-icons-round">table_view</span>
+                        Exportar Excel
+                    </button>
+                    <button id="add-run-btn" class="action-btn primary">
+                        <span class="material-icons-round">add</span>
+                        Novo Treino
+                    </button>
+                </div>
+            </header>
+            
+            <div id="runs-container" class="runs-container">
+                <!-- Run cards will be inserted here -->
+                <div class="empty-state">
+                    <span class="material-icons-round">running_with_errors</span>
+                    <p>Nenhum treino registrado ainda.</p>
+                    <button id="add-first-run" class="btn primary">Adicionar Primeiro Treino</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="add-run-template">
+        <div class="add-run-view animate-fade-in">
+            <header class="section-header">
+                <h2 id="form-title">Novo Treino</h2>
+            </header>
+            
+            <form id="run-form" class="run-form">
+                <input type="hidden" id="run-id" value="">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="run-date">Data</label>
+                        <input type="date" id="run-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="workout-type">Tipo</label>
+                        <select id="workout-type" required>
+                            <!-- Options will be populated from backend -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="run-distance">Distância (km)</label>
+                        <input type="number" id="run-distance" step="0.01" min="0" placeholder="Ex: 5.2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="run-duration">Duração (minutos)</label>
+                        <input type="number" id="run-duration" min="0" placeholder="Ex: 30" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="avg-bpm">BPM Médio</label>
+                        <input type="number" id="avg-bpm" min="0" placeholder="Ex: 145">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-bpm">BPM Máximo</label>
+                        <input type="number" id="max-bpm" min="0" placeholder="Ex: 165">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="elevation-gain">Ganho de Elevação (m)</label>
+                        <input type="number" id="elevation-gain" min="0" placeholder="Ex: 120">
+                    </div>
+                    <div class="form-group">
+                        <label for="calories">Calorias</label>
+                        <input type="number" id="calories" min="0" placeholder="Ex: 350">
+                    </div>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="notes">Notas</label>
+                    <textarea id="notes" rows="4" placeholder="Observações sobre o treino..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancel-btn" class="btn">Cancelar</button>
+                    <button type="submit" id="save-btn" class="btn primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </template>
+
+    <template id="statistics-template">
+        <div class="statistics-view animate-fade-in">
+            <header class="section-header">
+                <h2>Estatísticas Detalhadas</h2>
+            </header>
+            
+            <div class="tabs">
+                <div class="tab-header">
+                    <div class="tab active" data-tab="distance-duration">Distância & Duração</div>
+                    <div class="tab" data-tab="pace-cardio">Ritmo & Cardio</div>
+                    <div class="tab" data-tab="summary">Resumo</div>
+                </div>
+                
+                <div class="tab-content">
+                    <div class="tab-pane active" id="distance-duration-tab">
+                        <div class="charts-container">
+                            <canvas id="distance-chart"></canvas>
+                            <canvas id="duration-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane" id="pace-cardio-tab">
+                        <div class="charts-container">
+                            <canvas id="pace-chart"></canvas>
+                            <canvas id="cardio-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane" id="summary-tab">
+                        <div class="summary-container">
+                            <div class="stats-summary">
+                                <h3>Resumo de Estatísticas</h3>
+                                <div class="summary-text" id="stats-summary"></div>
+                                <button id="export-stats-btn" class="btn">
+                                    <span class="material-icons-round">file_download</span>
+                                    Exportar Estatísticas
+                                </button>
+                            </div>
+                            <div class="monthly-summary">
+                                <h3>Evolução Mensal</h3>
+                                <canvas id="monthly-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/components.js"></script>
+    <script src="./js/charts.js"></script>
+    <script src="./js/main.js"></script>
+</body>
+</html>
