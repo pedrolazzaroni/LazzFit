@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/animations.css">
     <link rel="stylesheet" href="./css/notification.css">
+    <link rel="stylesheet" href="./css/custom-inputs.css"> <!-- Adicionado para estilos dos novos inputs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 </head>
@@ -185,11 +186,16 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="run-distance">Distância (km)</label>
-                        <input type="number" id="run-distance" step="0.01" min="0" placeholder="Ex: 5.2" required>
+                        <div class="input-container">
+                            <input type="text" id="run-distance" placeholder="Ex: 10.50" required>
+                            <span class="input-suffix">km</span>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="run-duration">Duração (minutos)</label>
-                        <input type="number" id="run-duration" min="0" placeholder="Ex: 30" required>
+                        <label for="run-duration">Duração (MM:SS)</label>
+                        <div class="input-container">
+                            <input type="text" id="run-duration" placeholder="Ex: 55:24" required>
+                        </div>
                     </div>
                 </div>
                 
@@ -281,6 +287,7 @@
     <script src="./js/formatters.js"></script>
     <script src="./js/components.js"></script>
     <script src="./js/charts.js"></script>
+    <script src="./js/custom-inputs.js"></script> <!-- Novo script para gerenciar inputs customizados -->
     <script src="./js/main.js"></script>
 </body>
 </html>
