@@ -44,17 +44,14 @@ class DatabaseManager:
         """Cria a tabela de treinos se não existir e verifica se é necessário atualizar a estrutura"""
         self.connect()
         
-        # Verifica se a tabela já existe
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='runs'")
         table_exists = self.cursor.fetchone()
         
         if table_exists:
-            # Tabela existe, verificar a estrutura atual
             self.cursor.execute("PRAGMA table_info(runs)")
             columns = self.cursor.fetchall()
             column_names = [col[1] for col in columns]
             
-            # Verificar se os novos campos existem
             missing_columns = []
             if "avg_bpm" not in column_names:
                 missing_columns.append("avg_bpm INTEGER")
