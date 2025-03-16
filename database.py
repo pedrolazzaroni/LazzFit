@@ -41,7 +41,6 @@ class DatabaseManager:
             self.conn.close()
     
     def setup(self):
-        """Cria a tabela de treinos se não existir e verifica se é necessário atualizar a estrutura"""
         self.connect()
         
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='runs'")
