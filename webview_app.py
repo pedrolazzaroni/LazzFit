@@ -479,6 +479,174 @@ class LazzFitAPI:
             'notes': safe_get(run, 10, '')
         }
 
+    # Métodos para gerenciar planos de treino
+    def create_training_plan(self, plan_data):
+        """Cria um novo plano de treino"""
+        try:
+            name = plan_data.get('name', 'Novo Plano de Treino')
+            goal = plan_data.get('goal', '')
+            duration_weeks = int(plan_data.get('duration_weeks', 4))
+            level = plan_data.get('level', 'Iniciante')
+            notes = plan_data.get('notes', '')
+            
+            if not self.connect():
+                print("Erro: Não foi possível conectar ao banco de dados")
+                return None
+            
+            plan_id = self.db.create_training_plan(name, goal, duration_weeks, level, notes)
+            
+            if plan_id:
+                return self.get_training_plan(plan_id)
+            else:
+                return None
+        except Exception as e:
+            print(f"Erro ao criar plano de treino: {e}")
+            return None
+    
+    def get_all_training_plans(self):
+        """Retorna todos os planos de treino"""
+        try:
+            plans = self.db.get_all_training_plans()
+            
+            # Formatar os planos para JSON
+            formatted_plans = []
+            for plan in plans:
+                formatted_plans.append({
+                    'id': plan[0],
+                    'name': plan[1],
+                    'goal': plan[2],
+                    'duration_weeks': plan[3],
+                    'level': plan[4],
+                    'notes': plan[5],
+                    'created_at': plan[6],
+                    'updated_at': plan[7]
+                })
+                
+            return formatted_plans
+        except Exception as e:
+            print(f"Erro ao obter planos de treino: {e}")
+            return []
+    
+    def get_training_plan(self, plan_id):
+        """Retorna um plano de treino específico"""
+        try:
+            return self.db.get_training_plan(plan_id)
+        except Exception as e:
+            print(f"Erro ao obter plano de treino {plan_id}: {e}")
+            return None
+    
+    def update_training_plan(self, plan_id, plan_data):
+        """Atualiza um plano de treino existente"""
+        try:
+            name = plan_data.get('name', 'Plano de Treino')
+            goal = plan_data.get('goal', '')
+            duration_weeks = int(plan_data.get('duration_weeks', 4))
+            level = plan_data.get('level', 'Iniciante')
+            notes = plan_data.get('notes', '')
+            
+            success = self.db.update_training_plan(plan_id, name, goal, duration_weeks, level, notes)
+            
+            if success:
+                return self.get_training_plan(plan_id)
+            else:
+                return None
+        except Exception as e:
+            print(f"Erro ao atualizar plano de treino {plan_id}: {e}")
+            return None
+    
+    def update_training_week(self, week_id, week_data):
+        """Atualiza uma semana de treino"""
+        try:
+            focus = week_data.get('focus', '')
+            total_distance = float(week_data.get('total_distance', 0))
+            notes = week_data.get('notes', '')
+            
+            success = self.db.update_training_week(week_id, focus, total_distance, notes)
+            
+            return success
+        except Exception as e:
+            print(f"Erro ao atualizar semana de treino {week_id}: {e}")
+            return False
+    
+    def update_training_session(self, session_id, session_data):
+        """Atualiza uma sessão de treino"""
+        try:
+            workout_type = session_data.get('workout_type', 'Descanso')
+            distance = float(session_data.get('distance', 0))
+            duration = int(session_data.get('duration', 0))
+            intensity = session_data.get('intensity', 'Baixa')
+            pace_target = session_data.get('pace_target', '')
+            hr_zone = session_data.get('hr_zone', '')
+            details = session_data.get('details', '')
+            
+            success = self.db.update_training_session(session_id, workout_type, distance, duration, intensity, pace_target, hr_zone, details)
+            
+            return success
+        except Exception as e:
+            print(f"Erro ao atualizar sessão de treino {session_id}: {e}")
+            return False
+    
+    def delete_training_plan(self, plan_id):
+        """Deleta um plano de treino"""
+        try:
+            return self.db.delete_training_plan(plan_id)
+        except Exception as e:
+            print(f"Erro ao deletar plano de treino {plan_id}: {e}")
+            return False
+    
+    def export_training_plan_to_excel(self, plan_id):
+        """Exporta um plano de treino para Excel"""
+        try:
+            # Verificar se o módulo Excel está disponível
+            try:
+                import openpyxl
+                excel_available = True
+            except ImportError:
+                excel_available = False
+                webview.windows[0].evaluate_js("""
+                    app.showNotification(
+                        'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
+                        'error'
+                    );
+                """)
+                return False
+                
+            # Show dialog to ask where to save
+            file_path = self._get_save_filepath("Excel Files", ".xlsx")
+            if not file_path:
+                return False
+            
+            # Make sure it has the correct extension
+            if not file_path.lower().endswith((".xlsx", ".xls")):
+                file_path += ".xlsx"
+            
+            # Update UI to show exporting status
+            webview.windows[0].evaluate_js("""
+                app.showNotification('Exportando plano de treino para Excel...', 'info');
+            """)
+            
+            # Export to Excel
+            success = self.db.export_training_plan_to_xlsx(plan_id, file_path)
+            
+            # Notify UI of result
+            if success:
+                webview.windows[0].evaluate_js(f"""
+                    app.showNotification('Plano de treino exportado com sucesso para: {os.path.basename(file_path)}', 'success');
+                """)
+            else:
+                webview.windows[0].evaluate_js("""
+                    app.showNotification('Falha ao exportar plano de treino para Excel.', 'error');
+                """)
+            
+            return success
+        except Exception as e:
+            print(f"Error exporting training plan to Excel: {str(e)}")
+            print(traceback.format_exc())
+            webview.windows[0].evaluate_js(f"""
+                app.showNotification('Erro ao exportar: {str(e)}', 'error');
+            """)
+            return False
+
 def get_resource_path(relative_path):
     """Get absolute path to resources in production or development"""
     try:

@@ -4,22 +4,36 @@
  */
 class App {
     constructor() {
+        console.log("🚀 Inicializando aplicação LazzFit...");
+        
         this.currentView = null;
         this.viewContainer = document.getElementById('view-container');
         this.runs = [];
         this.initialized = false;
         this.dataLoaded = false;  // Novo flag para controlar carregamento de dados
         
+        // Verificar a existência do container de views
+        if (!this.viewContainer) {
+            console.error("❌ ERRO CRÍTICO: View container não encontrado!");
+            return;
+        }
+        
         // Map view names to their handler methods
         this.viewHandlers = {
             'dashboard': this.showDashboard.bind(this),
             'runs': this.showRuns.bind(this),
             'add-run': this.showAddRun.bind(this),
-            'statistics': this.showStatistics.bind(this)
+            'statistics': this.showStatistics.bind(this),
+            'training-plans': this.showTrainingPlans.bind(this),  // ✓ Adicionado diretamente aqui
+            'create-plan': this.showCreatePlan.bind(this),        // ✓ Adicionado diretamente aqui
+            'edit-plan': this.showEditPlan.bind(this),           // ✓ Adicionado diretamente aqui
+            'view-plan': this.showViewPlan.bind(this)            // ✓ Adicionado diretamente aqui
         };
         
         // Set up event listeners
         this.setupEventListeners();
+        
+        console.log("✓ App construído com sucesso");
     }
     
     /**
@@ -28,11 +42,28 @@ class App {
     async init() {
         if (this.initialized) return;
         
+        console.log("🔄 Inicializando app...");
+        
         try {
             // Show loading state
             this.showLoading();
             
+            // Verificar existência de templates críticos
+            const criticalTemplates = [
+                'dashboard-template', 'runs-template', 'add-run-template', 
+                'statistics-template', 'training-plans-template'
+            ];
+            
+            for (const templateId of criticalTemplates) {
+                const template = document.getElementById(templateId);
+                if (!template) {
+                    console.error(`❌ Template crítico não encontrado: ${templateId}`);
+                    this.showError(`Erro crítico: Template não encontrado (${templateId}). A aplicação pode não funcionar corretamente.`);
+                }
+            }
+            
             // Verifica conexão com o banco de dados
+            console.log("🔍 Verificando banco de dados...");
             const dbConnected = await api.checkDatabaseConnection();
             
             if (!dbConnected) {
@@ -54,8 +85,9 @@ class App {
             this.checkResourcesAvailability();
             
             this.initialized = true;
+            console.log("✅ App inicializado com sucesso");
         } catch (error) {
-            console.error('Failed to initialize app:', error);
+            console.error('❌ Falha ao inicializar app:', error);
             this.showError('Falha ao inicializar o aplicativo. Por favor, recarregue a página.');
         } finally {
             this.hideLoading();
@@ -948,6 +980,11 @@ class App {
                 message = 'Sem dados suficientes para gerar estatísticas.';
                 btnText = 'Adicionar Primeiro Treino';
                 break;
+            case 'training-plans':
+                icon = 'calendar_month';
+                message = 'Nenhum plano de treino criado ainda.';
+                btnText = 'Criar Primeiro Plano';
+                break;
             default:
                 icon = 'info';
                 message = 'Nenhum dado disponível.';
@@ -1054,6 +1091,17 @@ class App {
                 );
             }
         });
+
+        // Check for training plans feature availability
+        try {
+            if (api.isPyWebView && typeof window.pywebview.api.get_all_training_plans === 'function') {
+                console.log("✅ Training plans feature available");
+            } else {
+                console.warn("⚠️ Training plans feature might not be available");
+            }
+        } catch (error) {
+            console.warn('Error checking training plans availability:', error);
+        }
     }
 
     /**
@@ -1066,49 +1114,244 @@ class App {
             setTimeout(() => notification.remove(), 300);
         });
     }
+
+    /**
+     * Show the edit plan view
+     * @param {Object} params - Parameters including the plan ID
+     */
+    showEditPlan(params) {
+        console.log("🔄 Tentando editar plano:", params);
+        
+        if (!params || !params.planId) {
+            console.warn("⚠️ ID do plano não fornecido para edição");
+            this.navigate('training-plans');
+            return;
+        }
+        
+        try {
+            if (typeof trainingPlans === 'undefined' || !trainingPlans) {
+                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                this.showNotification("Módulo de planos de treino não disponível", "error");
+                this.navigate('training-plans');
+                return;
+            }
+            
+            trainingPlans.editPlan(parseInt(params.planId));
+        } catch (error) {
+            console.error("❌ Erro ao editar plano:", error);
+            this.showNotification("Erro ao carregar tela de edição do plano", "error");
+            this.navigate('training-plans');
+        }
+    }
+    
+    /**
+     * Show the view plan details
+     * @param {Object} params - Parameters including the plan ID
+     */
+    showViewPlan(params) {
+        console.log("🔄 Tentando visualizar plano:", params);
+        
+        if (!params || !params.planId) {
+            console.warn("⚠️ ID do plano não fornecido para visualização");
+            this.navigate('training-plans');
+            return;
+        }
+        
+        try {
+            if (typeof trainingPlans === 'undefined' || !trainingPlans) {
+                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                this.showNotification("Módulo de planos de treino não disponível", "error");
+                this.navigate('training-plans');
+                return;
+            }
+            
+            trainingPlans.viewPlan(parseInt(params.planId));
+        } catch (error) {
+            console.error("❌ Erro ao visualizar plano:", error);
+            this.showNotification("Erro ao carregar detalhes do plano", "error");
+            this.navigate('training-plans');
+        }
+    }
+
+    /**
+     * Show the training plans view
+     */
+    showTrainingPlans() {
+        console.log("🔄 Iniciando visualização de planos de treino");
+        
+        try {
+            // Verificar disponibilidade do template
+            const template = document.getElementById('training-plans-template');
+            
+            if (!template) {
+                console.error("❌ Template de planos de treino não encontrado!");
+                this.showNotification("Erro ao carregar visualização de planos de treino", "error");
+                return;
+            }
+            
+            // Clone do template
+            const plansView = document.importNode(template.content, true);
+            
+            // Limpar container e inserir a view
+            this.viewContainer.innerHTML = '';
+            this.viewContainer.appendChild(plansView);
+            
+            // Verificar se o botão existe antes de configurar
+            const createPlanBtn = document.getElementById('create-plan-btn');
+            if (createPlanBtn) {
+                createPlanBtn.addEventListener('click', () => {
+                    console.log("🖱️ Botão 'Criar Plano' clicado");
+                    this.navigate('create-plan');
+                });
+            } else {
+                console.warn("⚠️ Botão 'create-plan-btn' não encontrado");
+            }
+            
+            // Verificar o módulo trainingPlans
+            if (typeof trainingPlans !== 'undefined' && trainingPlans) {
+                console.log("🔄 Inicializando visualização de planos de treino");
+                trainingPlans.initTrainingPlansView();
+            } else {
+                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                this.showNotification("Módulo de planos de treino não disponível", "error");
+                
+                // Mostrar estado vazio alternativo
+                const container = document.getElementById('training-plans-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="material-icons-round">error_outline</span>
+                            <p>Não foi possível carregar o módulo de planos de treino.</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error("❌ Erro ao mostrar planos de treino:", error);
+            this.showNotification("Erro ao carregar visualização de planos de treino", "error");
+            
+            // Mostrar conteúdo mínimo em caso de erro
+            this.viewContainer.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-round">error_outline</span>
+                    <p>Ocorreu um erro ao carregar os planos de treino. Por favor, tente novamente.</p>
+                    <button class="btn primary" onclick="window.app.navigate('dashboard')">Voltar ao Dashboard</button>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Show the create plan view
+     */
+    showCreatePlan() {
+        console.log("🔄 Mostrando tela de criação de plano");
+        
+        try {
+            if (typeof trainingPlans === 'undefined' || !trainingPlans) {
+                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                this.showNotification("Módulo de planos de treino não disponível", "error");
+                this.navigate('dashboard');
+                return;
+            }
+            
+            trainingPlans.showCreatePlanView();
+        } catch (error) {
+            console.error("❌ Erro ao mostrar tela de criação de plano:", error);
+            this.showNotification("Erro ao carregar tela de criação de plano", "error");
+            this.navigate('dashboard');
+        }
+    }
+
+    /**
+     * Register a new view handler
+     * @param {string} viewName - Name of the view
+     * @param {Function} handler - Function to handle the view
+     */
+    registerViewHandler(viewName, handler) {
+        if (typeof handler === 'function') {
+            this.viewHandlers[viewName] = handler;
+        }
+    }
 }
 
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new App();
-    window.app = app; // Make it accessible to pywebview
+    console.log("🌐 DOM carregado, inicializando aplicação...");
     
-    // CORREÇÃO: Garantir que a API esteja pronta antes de inicializar o app
-    if (api.initialized) {
-        app.init();
-    } else {
-        console.log("🔍 API não inicializada. Aguardando inicialização...");
-        // Configurar um observador para inicializar quando a API estiver pronta
-        const apiReadyCheck = setInterval(() => {
-            if (api.initialized) {
-                clearInterval(apiReadyCheck);
-                app.init();
-            }
-        }, 100);
+    try {
+        // Criar a instância do app e torná-la global
+        window.app = new App();
         
-        // Timeout após 10 segundos
-        setTimeout(() => {
-            clearInterval(apiReadyCheck);
-            console.warn("⚠️ Timeout ao aguardar API. Tentando inicializar mesmo assim...");
-            app.init();
-        }, 10000);
-    }
+        // Configurar manipuladores de erro não tratados
+        window.addEventListener('error', (event) => {
+            console.error("❌ Erro não tratado:", event.error);
+            if (window.app) {
+                window.app.showNotification("Ocorreu um erro inesperado. Consulte o console para mais detalhes.", "error");
+            }
+        });
+        
+        // Aguardar API inicializada
+        console.log("🔍 Verificando status da API...");
+        
+        const waitForAPI = () => {
+            if (api && api.initialized) {
+                console.log("✅ API inicializada, prosseguindo...");
+                window.app.init();
+            } else {
+                console.log("⏳ API ainda não inicializada, aguardando...");
+                setTimeout(waitForAPI, 300);
+            }
+        };
+        
+        // Tentativa inicial de verificação da API
+        waitForAPI();
     
-    // Configurar botão de saída - removida a confirmação
-    document.getElementById('exit-btn').addEventListener('click', async () => {
-        try {
-            // Mostrar uma notificação de saída
-            app.showNotification('Finalizando aplicativo...', 'info');
-            
-            // Pequeno delay para a notificação ser exibida
-            setTimeout(async () => {
-                // Chamar método de saída no backend se disponível
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
-                    await window.pywebview.api.exit_app();
+        // Configurar botão de saída
+        const exitBtn = document.getElementById('exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', async () => {
+                try {
+                    if (window.app) {
+                        window.app.showNotification('Finalizando aplicativo...', 'info');
+                    }
+                    
+                    setTimeout(async () => {
+                        if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
+                            await window.pywebview.api.exit_app();
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error('❌ Erro ao fechar aplicativo:', error);
                 }
-            }, 500);
-        } catch (error) {
-            console.error('Erro ao fechar aplicativo:', error);
+            });
         }
-    });
+    } catch (error) {
+        console.error("❌ ERRO CRÍTICO NA INICIALIZAÇÃO:", error);
+        alert("Erro crítico ao inicializar a aplicação. Verifique o console para detalhes.");
+    }
+});
+
+// Verifica se a página está carregando corretamente
+window.addEventListener('load', () => {
+    console.log("🏁 Página totalmente carregada");
+    
+    // Backup para garantir que o módulo trainingPlans está disponível
+    if (typeof trainingPlans === 'undefined') {
+        console.warn("⚠️ Módulo trainingPlans não detectado no carregamento completo");
+        
+        // Tentar carregar o módulo training-plans.js dinamicamente
+        const script = document.createElement('script');
+        script.src = './js/training-plans.js';
+        script.onload = () => {
+            console.log("✅ Módulo training-plans.js carregado dinamicamente");
+            if (window.app && window.app.initialized && window.app.currentView === 'training-plans') {
+                window.app.navigate('training-plans');
+            }
+        };
+        script.onerror = () => {
+            console.error("❌ Falha ao carregar o módulo training-plans.js dinamicamente");
+        };
+        document.head.appendChild(script);
+    }
 });

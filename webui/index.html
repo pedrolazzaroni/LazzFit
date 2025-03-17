@@ -7,17 +7,24 @@
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/animations.css">
     <link rel="stylesheet" href="./css/notification.css">
-    <link rel="stylesheet" href="./css/custom-inputs.css"> <!-- Adicionado para estilos dos novos inputs -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="./css/custom-inputs.css">
+    <link rel="stylesheet" href="./css/training-plans.css">
+    
+    <!-- Material Icons - Importante para ícones -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar Navigation -->
         <nav class="sidebar">
             <div class="logo-container">
-                <h1 class="logo">LazzFit</h1>
-                <p class="subtitle">Gerenciador de Treinos</p>
+                <div class="logo">Lazz<span>Fit</span></div>
+                <div class="subtitle">Gerenciador de Treinos</div>
             </div>
+            
             <ul class="nav-links">
                 <li class="nav-item active" data-view="dashboard">
                     <span class="material-icons-round">dashboard</span>
@@ -35,47 +42,53 @@
                     <span class="material-icons-round">bar_chart</span>
                     Estatísticas
                 </li>
+                <li class="nav-item" data-view="training-plans">
+                    <span class="material-icons-round">calendar_month</span>
+                    Planos de Treino
+                </li>
             </ul>
+            
             <div class="sidebar-footer">
-                <div class="version">v1.2.0</div>
-                <button id="exit-btn" class="exit-button" title="Sair do aplicativo">
-                    <span class="material-icons-round">exit_to_app</span>
+                <button id="exit-btn" class="exit-button">
+                    <span class="material-icons-round">logout</span>
                     Sair
                 </button>
+                <div class="version">v1.0.0</div>
             </div>
         </nav>
         
+        <!-- Main Content Area -->
         <main class="content">
-            <!-- Conteúdo será carregado dinamicamente -->
             <div id="view-container"></div>
         </main>
     </div>
-
-    <!-- Templates dos componentes -->
+    
+    <!-- Templates -->
+    <!-- Dashboard Template -->
     <template id="dashboard-template">
         <div class="dashboard-view animate-fade-in">
             <header class="section-header">
                 <h2>Dashboard</h2>
-                <div class="date-display">Hoje: <span id="current-date"></span></div>
+                <div class="date-display" id="current-date">01/01/2023</div>
             </header>
             
             <div class="stats-cards">
-                <div class="stat-card animate-slide-in" style="--delay: 0.1s">
+                <div class="stat-card">
                     <span class="material-icons-round icon">directions_run</span>
-                    <h3>Total de Corridas</h3>
+                    <h3>Total de Treinos</h3>
                     <div class="value" id="total-runs">0</div>
                 </div>
-                <div class="stat-card animate-slide-in" style="--delay: 0.2s">
-                    <span class="material-icons-round icon">straighten</span>
+                <div class="stat-card">
+                    <span class="material-icons-round icon">route</span>
                     <h3>Distância Total</h3>
                     <div class="value" id="total-distance">0 km</div>
                 </div>
-                <div class="stat-card animate-slide-in" style="--delay: 0.3s">
+                <div class="stat-card">
                     <span class="material-icons-round icon">timer</span>
                     <h3>Tempo Total</h3>
                     <div class="value" id="total-time">0h 0m</div>
                 </div>
-                <div class="stat-card animate-slide-in" style="--delay: 0.4s">
+                <div class="stat-card">
                     <span class="material-icons-round icon">speed</span>
                     <h3>Ritmo Médio</h3>
                     <div class="value" id="avg-pace">0:00 min/km</div>
@@ -83,71 +96,25 @@
             </div>
             
             <div class="chart-container animate-slide-up">
-                <h3>Últimos Treinos</h3>
+                <h3>Treinos Recentes</h3>
                 <canvas id="recent-runs-chart"></canvas>
             </div>
         </div>
     </template>
 
-    <template id="run-card-template">
-        <div class="run-card">
-            <div class="card-header">
-                <div class="date-badge">
-                    <span class="material-icons-round">event</span>
-                    <span class="date-value"></span>
-                </div>
-                <div class="workout-type"></div>
-            </div>
-            
-            <div class="card-body">
-                <div class="stat-group">
-                    <div class="stat">
-                        <span class="material-icons-round">directions_run</span>
-                        <span class="distance"></span> km
-                    </div>
-                    <div class="stat">
-                        <span class="material-icons-round">timer</span>
-                        <span class="duration"></span>
-                    </div>
-                    <div class="stat">
-                        <span class="material-icons-round">speed</span>
-                        <span class="pace"></span> min/km
-                    </div>
-                </div>
-                
-                <div class="health-stats"></div>
-            </div>
-            
-            <div class="card-actions">
-                <button class="action-btn edit-btn">
-                    <span class="material-icons-round">edit</span>
-                </button>
-                <button class="action-btn delete-btn">
-                    <span class="material-icons-round">delete</span>
-                </button>
-                <button class="action-btn expand-btn">
-                    <span class="material-icons-round">expand_more</span>
-                </button>
-            </div>
-            
-            <div class="card-expanded">
-                <!-- Conteúdo expandido -->
-            </div>
-        </div>
-    </template>
-
+    <!-- Runs Template -->
     <template id="runs-template">
         <div class="runs-view animate-fade-in">
             <header class="section-header">
-                <h2>Seus Treinos</h2>
+                <h2>Treinos</h2>
                 <div class="action-buttons">
                     <button id="export-csv-btn" class="action-btn">
                         <span class="material-icons-round">file_download</span>
-                        Exportar CSV
+                        CSV
                     </button>
                     <button id="export-excel-btn" class="action-btn">
-                        <span class="material-icons-round">table_view</span>
-                        Exportar Excel
+                        <span class="material-icons-round">grid_on</span>
+                        Excel
                     </button>
                     <button id="add-run-btn" class="action-btn primary">
                         <span class="material-icons-round">add</span>
@@ -156,17 +123,56 @@
                 </div>
             </header>
             
-            <div id="runs-container" class="runs-container">
-                <!-- Run cards will be inserted here -->
-                <div class="empty-state">
-                    <span class="material-icons-round">running_with_errors</span>
-                    <p>Nenhum treino registrado ainda.</p>
-                    <button id="add-first-run" class="btn primary">Adicionar Primeiro Treino</button>
-                </div>
-            </div>
+            <div id="runs-container" class="runs-container"></div>
         </div>
     </template>
 
+    <!-- Run Card Template -->
+    <template id="run-card-template">
+        <div class="run-card">
+            <div class="card-header">
+                <div class="date-badge">
+                    <span class="material-icons-round">event</span>
+                    <span class="date-value">01/01/2023</span>
+                </div>
+                <div class="workout-type">Corrida de Rua</div>
+            </div>
+            
+            <div class="card-body">
+                <div class="stat-group">
+                    <div class="stat">
+                        <span class="material-icons-round">route</span>
+                        <span class="distance">5.0</span> km
+                    </div>
+                    <div class="stat">
+                        <span class="material-icons-round">timer</span>
+                        <span class="duration">30</span> min
+                    </div>
+                    <div class="stat">
+                        <span class="material-icons-round">speed</span>
+                        <span class="pace">6:00</span> min/km
+                    </div>
+                </div>
+                <div class="health-stats"></div>
+            </div>
+            
+            <div class="card-actions">
+                <button class="action-btn-mini edit-btn" title="Editar">
+                    <span class="material-icons-round">edit</span>
+                </button>
+                <button class="action-btn-mini delete-btn" title="Excluir">
+                    <span class="material-icons-round">delete</span>
+                </button>
+                <button class="action-btn-mini expand-btn" title="Expandir">
+                    <span class="material-icons-round">expand_more</span>
+                </button>
+            </div>
+            
+            <div class="card-expanded" style="display: none;"></div>
+        </div>
+    </template>
+
+    <!-- Add Run Template -->
     <template id="add-run-template">
         <div class="add-run-view animate-fade-in">
             <header class="section-header">
@@ -174,7 +180,7 @@
             </header>
             
             <form id="run-form" class="run-form">
-                <input type="hidden" id="run-id" value="">
+                <input type="hidden" id="run-id">
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -182,54 +188,49 @@
                         <input type="date" id="run-date" required>
                     </div>
                     <div class="form-group">
-                        <label for="workout-type">Tipo</label>
-                        <select id="workout-type" required>
-                            <!-- Options will be populated from backend -->
-                        </select>
+                        <label for="workout-type">Tipo de Treino</label>
+                        <select id="workout-type"></select>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="run-distance">Distância (km)</label>
-                        <div class="input-container">
-                            <input type="text" id="run-distance" placeholder="Ex: 10.50" required>
-                            <span class="input-suffix">km</span>
-                        </div>
+                        <input type="text" id="run-distance" placeholder="Ex: 5.5" required>
                     </div>
                     <div class="form-group">
-                        <label for="run-duration">Duração (MM:SS)</label>
-                        <div class="input-container">
-                            <input type="text" id="run-duration" placeholder="Ex: 55:24" required>
-                        </div>
+                        <label for="run-duration">Duração (min)</label>
+                        <input type="text" id="run-duration" placeholder="Ex: 30:00" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="avg-bpm">BPM Médio</label>
-                        <input type="number" id="avg-bpm" min="0" placeholder="Ex: 145">
+                        <input type="number" id="avg-bpm" min="0" max="250">
                     </div>
                     <div class="form-group">
                         <label for="max-bpm">BPM Máximo</label>
-                        <input type="number" id="max-bpm" min="0" placeholder="Ex: 165">
+                        <input type="number" id="max-bpm" min="0" max="250">
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="elevation-gain">Ganho de Elevação (m)</label>
-                        <input type="number" id="elevation-gain" min="0" placeholder="Ex: 120">
+                        <input type="number" id="elevation-gain" min="0">
                     </div>
                     <div class="form-group">
                         <label for="calories">Calorias</label>
-                        <input type="number" id="calories" min="0" placeholder="Ex: 350">
+                        <input type="number" id="calories" min="0">
                     </div>
                 </div>
                 
-                <div class="form-group full-width">
-                    <label for="notes">Notas</label>
-                    <textarea id="notes" rows="4" placeholder="Observações sobre o treino..."></textarea>
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="notes">Notas</label>
+                        <textarea id="notes" rows="4"></textarea>
+                    </div>
                 </div>
                 
                 <div class="form-actions">
@@ -240,10 +241,17 @@
         </div>
     </template>
 
+    <!-- Statistics Template -->
     <template id="statistics-template">
         <div class="statistics-view animate-fade-in">
             <header class="section-header">
-                <h2>Estatísticas Detalhadas</h2>
+                <h2>Estatísticas</h2>
+                <div class="action-buttons">
+                    <button id="export-stats-btn" class="action-btn">
+                        <span class="material-icons-round">file_download</span>
+                        Exportar
+                    </button>
+                </div>
             </header>
             
             <div class="tabs">
@@ -256,27 +264,35 @@
                 <div class="tab-content">
                     <div class="tab-pane active" id="distance-duration-tab">
                         <div class="charts-container">
-                            <canvas id="distance-chart"></canvas>
-                            <canvas id="duration-chart"></canvas>
+                            <div class="chart-container">
+                                <h3>Distância por Treino</h3>
+                                <canvas id="distance-chart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Duração por Treino</h3>
+                                <canvas id="duration-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="tab-pane" id="pace-cardio-tab">
                         <div class="charts-container">
-                            <canvas id="pace-chart"></canvas>
-                            <canvas id="cardio-chart"></canvas>
+                            <div class="chart-container">
+                                <h3>Ritmo por Treino</h3>
+                                <canvas id="pace-chart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Frequência Cardíaca</h3>
+                                <canvas id="cardio-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="tab-pane" id="summary-tab">
                         <div class="summary-container">
                             <div class="stats-summary">
-                                <h3>Resumo de Estatísticas</h3>
-                                <div class="summary-text" id="stats-summary"></div>
-                                <button id="export-stats-btn" class="btn">
-                                    <span class="material-icons-round">file_download</span>
-                                    Exportar Estatísticas
-                                </button>
+                                <h3>Resumo Geral</h3>
+                                <pre id="stats-summary" class="summary-text"></pre>
                             </div>
                             <div class="monthly-summary">
                                 <h3>Evolução Mensal</h3>
@@ -289,11 +305,293 @@
         </div>
     </template>
 
-    <script src="./js/api.js"></script>
+    <!-- Training Plans Template -->
+    <template id="training-plans-template">
+        <div class="training-plans-view animate-fade-in">
+            <header class="section-header">
+                <h2>Planos de Treino</h2>
+                <div class="action-buttons">
+                    <button id="create-plan-btn" class="action-btn primary">
+                        <span class="material-icons-round">add</span>
+                        Novo Plano
+                    </button>
+                </div>
+            </header>
+            
+            <div id="training-plans-container" class="training-plans-container stagger-children">
+                <!-- Plans will be inserted here -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for Creating/Editing a Training Plan -->
+    <template id="edit-training-plan-template">
+        <div class="edit-plan-view animate-fade-in">
+            <header class="section-header">
+                <h2 id="plan-form-title">Novo Plano de Treino</h2>
+                <div class="action-buttons">
+                    <button id="back-to-plans-btn" class="action-btn">
+                        <span class="material-icons-round">arrow_back</span>
+                        Voltar
+                    </button>
+                </div>
+            </header>
+            
+            <form id="training-plan-form" class="plan-form">
+                <input type="hidden" id="plan-id" value="">
+                
+                <!-- Informações básicas do plano -->
+                <div class="form-section">
+                    <h3>Informações Básicas</h3>
+                    <div class="form-row">
+                        <div class="form-group required">
+                            <label for="plan-name">Nome do Plano</label>
+                            <input type="text" id="plan-name" placeholder="Ex: Preparação para Meia Maratona" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="plan-level">Nível</label>
+                            <select id="plan-level">
+                                <option value="Iniciante">Iniciante</option>
+                                <option value="Intermediário">Intermediário</option>
+                                <option value="Avançado">Avançado</option>
+                                <option value="Elite">Elite</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="plan-goal">Objetivo</label>
+                            <input type="text" id="plan-goal" placeholder="Ex: Completar meia maratona em 2h">
+                        </div>
+                        <div class="form-group required">
+                            <label for="plan-duration">Duração (semanas)</label>
+                            <input type="number" id="plan-duration" min="1" max="52" value="8" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="plan-notes">Notas Gerais</label>
+                            <textarea id="plan-notes" rows="3" placeholder="Observações gerais sobre este plano"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancel-plan-btn" class="btn">Cancelar</button>
+                    <button type="submit" id="save-plan-btn" class="btn primary">Salvar Plano</button>
+                </div>
+            </form>
+        </div>
+    </template>
+
+    <!-- Template for Viewing a Training Plan -->
+    <template id="view-training-plan-template">
+        <div class="view-plan animate-fade-in">
+            <header class="section-header">
+                <div class="plan-header-details">
+                    <h2 id="plan-title">Nome do Plano</h2>
+                    <div class="plan-meta">
+                        <span class="plan-meta-item" id="plan-level-display">
+                            <span class="material-icons-round">fitness_center</span>
+                            <span class="meta-text">Nível</span>
+                        </span>
+                        <span class="plan-meta-item" id="plan-duration-display">
+                            <span class="material-icons-round">date_range</span>
+                            <span class="meta-text">8 semanas</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="export-plan-btn" class="action-btn">
+                        <span class="material-icons-round">file_download</span>
+                        Exportar
+                    </button>
+                    <button id="edit-plan-btn" class="action-btn">
+                        <span class="material-icons-round">edit</span>
+                        Editar
+                    </button>
+                    <button id="back-from-plan-btn" class="action-btn">
+                        <span class="material-icons-round">arrow_back</span>
+                        Voltar
+                    </button>
+                </div>
+            </header>
+            
+            <div class="plan-details">
+                <div class="plan-goal-section">
+                    <h3>
+                        <span class="material-icons-round">flag</span>
+                        Objetivo
+                    </h3>
+                    <p id="plan-goal-display">Completar meia maratona em 2h</p>
+                </div>
+                
+                <div class="plan-notes-section">
+                    <h3>
+                        <span class="material-icons-round">notes</span>
+                        Notas
+                    </h3>
+                    <p id="plan-notes-display">Notas sobre o plano irão aparecer aqui.</p>
+                </div>
+            </div>
+            
+            <div class="training-weeks-container">
+                <h3>Semanas de Treinamento</h3>
+                <div id="weeks-accordion" class="accordion">
+                    <!-- Week accordion items will be generated here -->
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for Week Accordion Item -->
+    <template id="week-accordion-template">
+        <div class="accordion-item">
+            <div class="accordion-header">
+                <div class="accordion-title">
+                    <span class="week-number">Semana 1</span>
+                    <span class="week-focus">Base Aeróbica</span>
+                </div>
+                <div class="accordion-summary">
+                    <span class="week-distance">35 km</span>
+                    <button class="accordion-toggle">
+                        <span class="material-icons-round">expand_more</span>
+                    </button>
+                </div>
+            </div>
+            <div class="accordion-content">
+                <div class="week-training-grid">
+                    <!-- Training days will be filled here -->
+                </div>
+                
+                <div class="week-notes">
+                    <h4>Notas da Semana</h4>
+                    <p class="week-notes-content"></p>
+                </div>
+                
+                <div class="week-actions">
+                    <button class="btn edit-week-btn">Editar Semana</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for Training Session Edit Modal -->
+    <template id="edit-session-template">
+        <div class="session-edit-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-type">Tipo de Treino</label>
+                    <select id="session-type">
+                        <option value="Corrida Leve">Corrida Leve</option>
+                        <option value="Corrida Moderada">Corrida Moderada</option>
+                        <option value="Long Run">Long Run</option>
+                        <option value="Intervalado">Intervalado</option>
+                        <option value="Fartlek">Fartlek</option>
+                        <option value="Tempo">Tempo</option>
+                        <option value="Ritmo">Ritmo</option>
+                        <option value="Descanso">Descanso</option>
+                        <option value="Cross-training">Cross-training</option>
+                        <option value="Força">Força</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-distance">Distância (km)</label>
+                    <input type="number" id="session-distance" min="0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="session-duration">Duração (min)</label>
+                    <input type="number" id="session-duration" min="0">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-intensity">Intensidade</label>
+                    <select id="session-intensity">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Moderada">Moderada</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Máxima">Máxima</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="session-pace">Ritmo Alvo</label>
+                    <input type="text" id="session-pace" placeholder="Ex: 5:30 min/km">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-hr">Zona de FC</label>
+                    <select id="session-hr">
+                        <option value="">Não especificado</option>
+                        <option value="Z1">Zona 1 (50-60%)</option>
+                        <option value="Z2">Zona 2 (60-70%)</option>
+                        <option value="Z3">Zona 3 (70-80%)</option>
+                        <option value="Z4">Zona 4 (80-90%)</option>
+                        <option value="Z5">Zona 5 (90-100%)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group full-width">
+                    <label for="session-details">Detalhes</label>
+                    <textarea id="session-details" rows="3" placeholder="Detalhes do treino"></textarea>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for Training Plan Card -->
+    <template id="plan-card-template">
+        <div class="plan-card">
+            <div class="plan-card-header">
+                <h3 class="plan-name">Nome do Plano</h3>
+                <span class="plan-level">Intermediário</span>
+            </div>
+            <div class="plan-card-body">
+                <div class="plan-stats">
+                    <div class="plan-stat">
+                        <span class="material-icons-round">date_range</span>
+                        <span class="stat-value">8 semanas</span>
+                    </div>
+                    <div class="plan-stat">
+                        <span class="material-icons-round">update</span>
+                        <span class="stat-value">Atualizado: 01/01/2023</span>
+                    </div>
+                </div>
+                <p class="plan-goal">Objetivo: Completar uma meia maratona</p>
+            </div>
+            <div class="plan-card-actions">
+                <button class="action-btn view-plan-btn">
+                    <span class="material-icons-round">visibility</span>
+                    Visualizar
+                </button>
+                <button class="action-btn-mini edit-plan-btn" title="Editar">
+                    <span class="material-icons-round">edit</span>
+                </button>
+                <button class="action-btn-mini delete-plan-btn" title="Excluir">
+                    <span class="material-icons-round">delete</span>
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <!-- JavaScript Dependencies -->
+    <!-- IMPORTANTE: Ordem correta dos scripts -->
     <script src="./js/formatters.js"></script>
+    <script src="./js/api.js"></script>
     <script src="./js/components.js"></script>
     <script src="./js/charts.js"></script>
-    <script src="./js/custom-inputs.js"></script> <!-- Novo script para gerenciar inputs customizados -->
+    <script src="./js/training-plans.js"></script>
     <script src="./js/main.js"></script>
 </body>
 </html>
