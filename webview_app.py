@@ -209,24 +209,15 @@ class LazzFitAPI:
     def export_to_excel(self):
         """Export all runs to an Excel file"""
         try:
-            # Verificar e instalar o módulo openpyxl se necessário
+            # Verificar se o módulo Excel está disponível
             if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
-                # Tentar instalar o openpyxl automaticamente
-                self._install_openpyxl()
-                
-                # Verificar novamente após tentar instalar
-                try:
-                    import openpyxl
-                    self.db.EXCEL_AVAILABLE = True
-                    print("✓ O módulo openpyxl foi instalado com sucesso")
-                except ImportError:
-                    webview.windows[0].evaluate_js("""
-                        app.showNotification(
-                            'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
-                            'error'
-                        );
-                    """)
-                    return False
+                webview.windows[0].evaluate_js("""
+                    app.showNotification(
+                        'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
+                        'error'
+                    );
+                """)
+                return False
                     
             # Show dialog to ask where to save
             file_path = self._get_save_filepath("Excel Files", ".xlsx")
@@ -261,27 +252,6 @@ class LazzFitAPI:
             webview.windows[0].evaluate_js(f"""
                 app.showNotification('Erro ao exportar: {str(e)}', 'error');
             """)
-            return False
-    
-    def _install_openpyxl(self):
-        """Tenta instalar o módulo openpyxl automaticamente"""
-        try:
-            import sys
-            import subprocess
-            
-            print("🔄 Tentando instalar o módulo openpyxl automaticamente...")
-            webview.windows[0].evaluate_js("""
-                app.showNotification('Instalando módulo openpyxl para permitir exportação para Excel...', 'info');
-            """)
-            
-            # Executar pip para instalar o openpyxl
-            python_exe = sys.executable
-            subprocess.check_call([python_exe, "-m", "pip", "install", "openpyxl"])
-            
-            # Se chegou aqui, a instalação foi bem-sucedida
-            return True
-        except Exception as e:
-            print(f"❌ Falha ao instalar openpyxl: {e}")
             return False
 
     def export_to_csv(self):
@@ -325,23 +295,15 @@ class LazzFitAPI:
     def export_selected_to_excel(self, run_ids):
         """Export selected runs to an Excel file"""
         try:
-            # Verificar e instalar o módulo openpyxl se necessário
+            # Verificar se o módulo Excel está disponível
             if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
-                # Tentar instalar o openpyxl automaticamente
-                self._install_openpyxl()
-                
-                # Verificar novamente após tentar instalar
-                try:
-                    import openpyxl
-                    self.db.EXCEL_AVAILABLE = True
-                except ImportError:
-                    webview.windows[0].evaluate_js("""
-                        app.showNotification(
-                            'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
-                            'error'
-                        );
-                    """)
-                    return False
+                webview.windows[0].evaluate_js("""
+                    app.showNotification(
+                        'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
+                        'error'
+                    );
+                """)
+                return False
                     
             # Show dialog to ask where to save
             file_path = self._get_save_filepath("Excel Files", ".xlsx")
@@ -613,7 +575,7 @@ def start_app():
         print("🔍 Evento de encerramento detectado. Garantindo persistência dos dados...")
         
         # Garantir que conexão do banco esteja fechada adequadamente
-        if global_api and hasattr(global_api, 'db'):
+        if global_api and hasattr(global_api, 'db'):  # Corrigido "e" para "and"
             try:
                 global_api.db.ensure_connection_closed()
                 print("✓ Banco de dados desconectado corretamente no evento de encerramento")
