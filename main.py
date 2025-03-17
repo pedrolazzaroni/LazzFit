@@ -1,11 +1,30 @@
 import os
 import sys
 import argparse
-import traceback  # Adicione esta importação
+import traceback
+import atexit  # CORREÇÃO: Adicionar gestão de saída
+
+# CORREÇÃO: Função de finalização para garantir que o banco seja salvo
+def cleanup():
+    """Função executada quando o programa termina para garantir a persistência dos dados"""
+    print("🔍 Programa sendo encerrado. Executando limpeza final...")
+    
+    # Tentar garantir que conexão com banco está fechada
+    try:
+        from webview_app import global_api
+        if global_api and hasattr(global_api, 'db') and global_api.db.conn:
+            global_api.db.conn.commit()
+            global_api.db.disconnect()
+            print("✓ Banco de dados desconectado adequadamente")
+    except Exception as e:
+        print(f"❓ Informação: {e}")
 
 def main():
     """Main application launcher with UI mode selection"""
-    try:  # Adicione tratamento de exceção
+    try:
+        # Registrar função de limpeza para ser executada na saída
+        atexit.register(cleanup)
+        
         parser = argparse.ArgumentParser(description="LazzFit - Gerenciador de Treinos de Corrida")
         parser.add_argument('--classic', action='store_true', help='Use classic CustomTkinter GUI')
         args = parser.parse_args()

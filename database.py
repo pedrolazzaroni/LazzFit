@@ -5,6 +5,7 @@ import os
 import time
 import sys
 import traceback
+import shutil  # Para operações de cópia de arquivos
 
 # Verificar a disponibilidade do módulo openpyxl
 EXCEL_AVAILABLE = False
@@ -18,18 +19,27 @@ except ImportError:
 
 class DatabaseManager:
     def __init__(self, db_name):
-        # Garantir que o caminho do banco de dados é absoluto
+        # Garantir que o caminho do banco de dados é absoluto e único
         if not os.path.isabs(db_name):
             app_dir = os.path.dirname(os.path.abspath(__file__))
             data_dir = os.path.join(app_dir, "data")
-            # Criar diretório se não existir
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
-            self.db_name = os.path.join(data_dir, db_name)
+            self.db_name = os.path.join(data_dir, os.path.basename(db_name))
         else:
             self.db_name = db_name
             
-        print(f"DatabaseManager usando banco de dados em: {self.db_name}")
+        print(f"🔍 DatabaseManager usando banco de dados em: {self.db_name}")
+        
+        # Verificar se o diretório do banco existe
+        db_dir = os.path.dirname(self.db_name)
+        if not os.path.exists(db_dir):
+            try:
+                os.makedirs(db_dir)
+                print(f"✓ Diretório do banco de dados criado: {db_dir}")
+            except Exception as e:
+                print(f"❌ Erro ao criar diretório do banco de dados: {e}")
+        
         self.conn = None
         self.cursor = None
         
@@ -53,8 +63,18 @@ class DatabaseManager:
     def connect(self):
         """Conecta ao banco de dados com retry e melhor tratamento de erros"""
         if self.conn:
-            # Se já tem conexão ativa, usa ela
-            return True
+            # Verificar se a conexão ainda está ativa
+            try:
+                self.conn.execute("SELECT 1")
+                return True
+            except sqlite3.Error:
+                # Conexão não está mais válida, fechamos e tentamos novamente
+                try:
+                    self.conn.close()
+                except:
+                    pass
+                self.conn = None
+                self.cursor = None
             
         try:
             # Verificar se o diretório do banco existe, se não, criar
@@ -63,27 +83,35 @@ class DatabaseManager:
                 os.makedirs(db_dir)
                 
             # Tenta conectar com timeout para evitar problemas de lock
-            self.conn = sqlite3.connect(self.db_name, timeout=20)
-            # Configurar para lançar exceções em erros de constraints e para lidar melhor com concorrência
+            print(f"🔌 Tentando conectar ao banco de dados: {self.db_name}")
+            # CORREÇÃO: Aumentar timeout e desativar o modo journal WAL que pode causar problemas
+            self.conn = sqlite3.connect(self.db_name, timeout=30)
+            
+            # Configurações para melhorar a persistência
             self.conn.execute("PRAGMA foreign_keys = ON")
-            self.conn.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging é mais robusto
-            self.conn.execute("PRAGMA synchronous = NORMAL") # Bom equilíbrio entre performance e segurança
+            # CORREÇÃO: Usar modo de journal DELETE em vez de WAL para melhor compatibilidade
+            self.conn.execute("PRAGMA journal_mode = DELETE")
+            # CORREÇÃO: Usar modo FULL para garantir que os dados sejam gravados completamente
+            self.conn.execute("PRAGMA synchronous = FULL")
+            
             self.cursor = self.conn.cursor()
             
             # Resetar contador de tentativas após sucesso
             self.connection_attempts = 0
+            print(f"✓ Conexão estabelecida com o banco de dados")
             return True
         except sqlite3.Error as e:
             self.connection_attempts += 1
             
+            print(f"❌ Erro de conexão ao banco: {e}. Tentativa {self.connection_attempts}/{self.max_connection_attempts}")
+            
             if self.connection_attempts >= self.max_connection_attempts:
-                print(f"ERRO CRÍTICO: Falha ao conectar ao banco de dados após {self.connection_attempts} tentativas: {e}")
+                print(f"❌ ERRO CRÍTICO: Falha ao conectar ao banco de dados após {self.connection_attempts} tentativas")
                 # Tenta criar um novo banco se o atual está corrompido
                 self.try_recreate_database()
                 return False
                 
             # Pequena espera antes de tentar novamente
-            print(f"Erro de conexão ao banco: {e}. Tentando novamente ({self.connection_attempts}/{self.max_connection_attempts})...")
             time.sleep(1)
             return self.connect()  # Recursão limitada pelo contador de tentativas
     
@@ -106,7 +134,6 @@ class DatabaseManager:
             
             # Backup do banco atual (se existir)
             backup_name = f"{self.db_name}.backup_{int(time.time())}"
-            import shutil
             shutil.copy2(self.db_name, backup_name)
             print(f"Backup do banco de dados criado: {backup_name}")
             
@@ -136,7 +163,10 @@ class DatabaseManager:
         """Desconecta do banco de dados com melhor tratamento de erros"""
         if self.conn:
             try:
+                # CORREÇÃO: Garantir commit antes de fechar para salvar alterações pendentes
+                self.conn.commit()
                 self.conn.close()
+                print("Banco de dados fechado com sucesso - alterações salvas")
             except sqlite3.Error as e:
                 print(f"Erro ao fechar conexão com banco de dados: {e}")
             finally:
@@ -156,95 +186,123 @@ class DatabaseManager:
                     raise
                 time.sleep(0.5)  # Espera antes de tentar novamente
     
-    def setup(self):
+    def setup(self, force_new=False):
         """Configura o banco de dados com melhor tratamento de erros"""
         try:
+            # CORREÇÃO: Remover a forçação de recriação do banco de dados
+            if force_new and os.path.exists(self.db_name):
+                # Criar backup antes de substituir
+                backup_name = f"{self.db_name}.backup_{int(time.time())}"
+                shutil.copy2(self.db_name, backup_name)
+                print(f"✅ Banco de dados atual copiado para backup em {backup_name}")
+                # CORREÇÃO: Não remover o arquivo original a menos que seja absolutamente necessário
+                # os.remove(self.db_name)
+                # print(f"✅ Banco de dados removido para recriação")
+            
             if not self.connect():
-                print("ERRO: Não foi possível conectar ao banco de dados para setup.")
+                print("❌ ERRO: Não foi possível conectar ao banco de dados para setup.")
                 return False
                 
             # Verificação de integridade mais leve
             try:
-                # Verificamos apenas se conseguimos executar uma operação básica primeiro
-                self.cursor.execute("PRAGMA quick_check")
-                check_result = self.cursor.fetchone()[0]
+                # CORREÇÃO: Desativar a verificação agressiva que pode levar à recriação do banco
+                # Verificar apenas se a tabela existe, não a integridade completa
+                self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='runs'")
+                table_exists = self.cursor.fetchone()
                 
-                # Só realizar integrity_check completo se quick_check falhar
-                if check_result != "ok":
-                    print("Verificação rápida falhou, executando verificação completa...")
-                    self.cursor.execute("PRAGMA integrity_check")
-                    integrity = self.cursor.fetchone()[0]
-                    if integrity != "ok":
-                        print(f"ALERTA: Verificação de integridade falhou: {integrity}")
-                        self.try_recreate_database()
-                        if not self.connect():
-                            return False
+                # Somente se a tabela não existir, criar nova
+                if not table_exists:
+                    print("Tabela 'runs' não existe. Criando nova tabela...")
+                    self.create_runs_table()
+                else:
+                    print("✓ Tabela 'runs' já existe")
+                    # Verificar colunas faltantes, mas sem recriação
+                    self.check_and_add_missing_columns()
             except sqlite3.Error as e:
-                print(f"Erro durante verificação de integridade: {e}")
-                # Continuar mesmo se houver erro na verificação
+                print(f"Erro durante verificação de tabela: {e}")
+                # CORREÇÃO: Não tentar recriar o banco em caso de erro, apenas tentar criar a tabela
+                if not self.create_runs_table():
+                    print("❌ Não foi possível criar a tabela de corridas")
+                    return False
             
+            # Adicionar verificação para garantir que a tabela foi criada
             self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='runs'")
-            table_exists = self.cursor.fetchone()
-            
-            if table_exists:
-                self.cursor.execute("PRAGMA table_info(runs)")
-                columns = self.cursor.fetchall()
-                column_names = [col[1] for col in columns]
-                
-                missing_columns = []
-                if "avg_bpm" not in column_names:
-                    missing_columns.append("avg_bpm INTEGER")
-                if "max_bpm" not in column_names:
-                    missing_columns.append("max_bpm INTEGER")
-                if "elevation_gain" not in column_names:
-                    missing_columns.append("elevation_gain INTEGER")
-                if "workout_type" not in column_names:
-                    missing_columns.append("workout_type TEXT")
-                
-                # Adicionar colunas faltantes
-                for col in missing_columns:
-                    col_name = col.split()[0]
-                    try:
-                        self.cursor.execute(f"ALTER TABLE runs ADD COLUMN {col}")
-                        print(f"Coluna '{col_name}' adicionada à tabela 'runs'")
-                    except sqlite3.OperationalError:
-                        # Coluna já existe
-                        pass
+            if self.cursor.fetchone():
+                print("✓ Tabela 'runs' verificada e disponível")
             else:
-                # Criar tabela completa
-                self.cursor.execute('''
-                CREATE TABLE runs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    distance REAL,
-                    duration INTEGER,
-                    avg_pace TEXT,
-                    avg_bpm INTEGER,
-                    max_bpm INTEGER,
-                    elevation_gain INTEGER,
-                    calories INTEGER,
-                    workout_type TEXT,
-                    notes TEXT
-                )
-                ''')
-                print("Tabela 'runs' criada com sucesso")
-                
+                print("❌ ERRO: Tabela 'runs' não foi criada corretamente")
+                return False
+            
             self.conn.commit()
             return True
             
-        except sqlite3.Error as e:
-            print(f"ERRO durante setup do banco de dados: {e}")
+        except Exception as e:
+            print(f"❌ ERRO durante setup do banco de dados: {e}")
             print(traceback.format_exc())
-            # Tenta rollback em caso de erro
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except:
-                    pass
             return False
         finally:
-            self.conn.commit()  # Garantir que mudanças são salvas
+            if self.conn:
+                # CORREÇÃO: Garantir commit explícito para salvar alterações
+                self.conn.commit()
             self.disconnect()
+    
+    def create_runs_table(self):
+        """Cria a tabela 'runs' se não existir"""
+        try:
+            # Criar tabela completa
+            self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                distance REAL,
+                duration INTEGER,
+                avg_pace TEXT,
+                avg_bpm INTEGER,
+                max_bpm INTEGER,
+                elevation_gain INTEGER,
+                calories INTEGER,
+                workout_type TEXT,
+                notes TEXT
+            )
+            ''')
+            self.conn.commit()
+            print("✓ Tabela 'runs' criada ou verificada com sucesso")
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Erro ao criar tabela 'runs': {e}")
+            return False
+    
+    def check_and_add_missing_columns(self):
+        """Verifica e adiciona colunas faltantes na tabela runs"""
+        try:
+            self.cursor.execute("PRAGMA table_info(runs)")
+            columns = self.cursor.fetchall()
+            column_names = [col[1] for col in columns]
+            
+            missing_columns = []
+            if "avg_bpm" not in column_names:
+                missing_columns.append("avg_bpm INTEGER")
+            if "max_bpm" not in column_names:
+                missing_columns.append("max_bpm INTEGER")
+            if "elevation_gain" not in column_names:
+                missing_columns.append("elevation_gain INTEGER")
+            if "workout_type" not in column_names:
+                missing_columns.append("workout_type TEXT")
+            
+            # Adicionar colunas faltantes
+            for col in missing_columns:
+                col_name = col.split()[0]
+                try:
+                    self.cursor.execute(f"ALTER TABLE runs ADD COLUMN {col}")
+                    print(f"✓ Coluna '{col_name}' adicionada à tabela 'runs'")
+                except sqlite3.OperationalError:
+                    # Coluna já existe
+                    pass
+            
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Erro ao verificar colunas da tabela: {e}")
+            return False
     
     def add_run(self, date, distance, duration, avg_bpm, max_bpm, elevation_gain, calories, workout_type, notes=""):
         """Adiciona um novo registro de corrida"""
@@ -266,6 +324,7 @@ class DatabaseManager:
                 "INSERT INTO runs (date, distance, duration, avg_pace, avg_bpm, max_bpm, elevation_gain, calories, workout_type, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (date, distance, duration, avg_pace, avg_bpm, max_bpm, elevation_gain, calories, workout_type, notes)
             )
+            # CORREÇÃO: Garantir commit explícito
             self.conn.commit()
             run_id = self.cursor.lastrowid
             return run_id
@@ -278,7 +337,10 @@ class DatabaseManager:
                     pass
             return None
         finally:
-            self.disconnect()
+            # CORREÇÃO: Não desconectar após cada operação, apenas fazer commit
+            # Isso mantém a conexão viva e evita problemas de lock
+            if self.conn:
+                self.conn.commit()
     
     def get_all_runs(self):
         """Retorna todos os registros de corrida"""

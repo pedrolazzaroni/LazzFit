@@ -9,49 +9,106 @@ import traceback
 from tkinter import Tk, filedialog
 from database import DatabaseManager
 
+# Variável global para compartilhar o objeto API entre módulos
+global_api = None
+
 class LazzFitAPI:
     def __init__(self):
-        # Usar caminho absoluto para o banco de dados em um local persistente e fixo
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Corrigir o problema de path do banco de dados usando um caminho absoluto fixo
+        self.script_dir = os.path.abspath(os.path.dirname(__file__))
         data_dir = os.path.join(self.script_dir, "data")
         
         # Garantir que o diretório data existe
         if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
-            
+            try:
+                os.makedirs(data_dir)
+                print(f"✓ Diretório de dados criado: {data_dir}")
+            except Exception as e:
+                print(f"❌ ERRO ao criar diretório de dados: {e}")
+        
         self.db_path = os.path.join(data_dir, "lazzfit.db")
-        print(f"Inicializando banco de dados: {self.db_path}")
+        print(f"🔍 Inicializando banco de dados: {self.db_path}")
         
-        # Verifica se o banco de dados já existe, mas de forma menos agressiva
-        self.check_database_health()
-        
-        # Inicializa o banco de dados
-        self.db = DatabaseManager(self.db_path)
-        self.db.setup()
-        
-        # Teste de verificação para garantir que está funcionando
+        # Inicializa o banco de dados com um bloco try-except explícito
         try:
+            self.db = DatabaseManager(self.db_path)
+            setup_success = self.db.setup()
+            
+            if not setup_success:
+                print("❌ Falha na configuração do banco de dados")
+            else:
+                print("✓ Banco de dados configurado com sucesso")
+            
+            # Teste de verificação para garantir que está funcionando
             test_runs = self.db.get_all_runs()
-            print(f"Banco de dados conectado com sucesso! {len(test_runs)} registros encontrados.")
+            print(f"✓ Banco de dados conectado com sucesso! {len(test_runs)} registros encontrados.")
         except Exception as e:
-            print(f"ERRO ao acessar o banco de dados: {e}")
-            print(traceback.format_exc())  # Adicionado para mostrar o erro completo
+            print(f"❌ ERRO FATAL ao acessar o banco de dados: {e}")
+            print(traceback.format_exc())
+    
+    def recover_database(self):
+        """Tenta abordagens mais agressivas de recuperação do banco de dados"""
+        print("🔄 Tentando recuperação do banco de dados...")
+        
+        try:
+            # 1. Remover o arquivo se existir
+            if os.path.exists(self.db_path):
+                os.remove(self.db_path)
+                print("✓ Arquivo de banco de dados removido para recriação")
+            
+            # 2. Tentar criar um banco de dados novo e limpo
+            self.db = DatabaseManager(self.db_path)
+            setup_success = self.db.setup(force_new=True)
+            
+            if setup_success:
+                print("✓ Banco de dados recriado com sucesso")
+            else:
+                print("❌ Falha ao recriar o banco de dados")
+        except Exception as e:
+            print(f"❌ Erro durante recuperação: {e}")
     
     def check_database_health(self):
-        """Verifica a saúde do banco de dados com menos agressividade"""
-        # Se o banco de dados já existe, apenas verifica se é possível abri-lo
+        """Verifica a saúde do banco de dados com verificações detalhadas"""
+        print("🔍 Verificando banco de dados...")
+        
+        # Verificar se o arquivo existe
         if os.path.exists(self.db_path):
+            print(f"✓ Arquivo de banco de dados encontrado: {self.db_path}")
+            file_size = os.path.getsize(self.db_path)
+            print(f"  - Tamanho: {file_size} bytes")
+            
+            # Verificar permissões
             try:
-                # Tenta apenas abrir o banco sem executar verificações complexas
-                conn = sqlite3.connect(self.db_path)
-                conn.close()
-                print("Verificação simples de banco de dados: OK")
-            except sqlite3.Error as e:
-                print(f"ERRO ao abrir banco de dados: {e}")
-                print("Tentando criar backup e reiniciar banco de dados...")
-                self.backup_and_reset_database()
+                # Verificar permissão de leitura
+                with open(self.db_path, 'rb') as f:
+                    _ = f.read(1)
+                print("✓ Permissão de leitura OK")
+                
+                # Verificar permissão de escrita
+                with open(self.db_path, 'ab') as f:
+                    pass
+                print("✓ Permissão de escrita OK")
+                
+                # Testar conexão SQLite
+                try:
+                    conn = sqlite3.connect(self.db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA quick_check")
+                    result = cursor.fetchone()[0]
+                    conn.close()
+                    
+                    if result == "ok":
+                        print("✓ Verificação de integridade SQLite OK")
+                    else:
+                        print(f"⚠️ Verificação de integridade SQLite falhou: {result}")
+                        self.backup_and_reset_database()
+                except sqlite3.Error as e:
+                    print(f"❌ Erro ao verificar banco SQLite: {e}")
+                    self.backup_and_reset_database()
+            except Exception as e:
+                print(f"❌ Erro ao verificar permissões: {e}")
         else:
-            print("Banco de dados não existe. Será criado um novo.")
+            print(f"ℹ️ Banco de dados não existe. Será criado um novo em: {self.db_path}")
     
     def backup_and_reset_database(self):
         """Cria um backup do banco de dados atual e cria um novo"""
@@ -321,6 +378,28 @@ class LazzFitAPI:
             """)
             return False
     
+    def exit_app(self):
+        """Encerra o aplicativo de forma segura, garantindo que os dados sejam salvos"""
+        print("🔍 Encerrando aplicativo via API...")
+        
+        try:
+            # Garantir que qualquer operação pendente no banco de dados seja concluída
+            if hasattr(self, 'db') and self.db.conn:
+                self.db.conn.commit()
+                self.db.disconnect()
+                print("✓ Banco de dados desconectado corretamente")
+        except Exception as e:
+            print(f"❌ Erro ao fechar conexão com banco: {e}")
+        
+        # Encerrar a aplicação de forma segura com pequeno atraso
+        # para garantir que as operações de limpeza sejam concluídas
+        def delayed_exit():
+            time.sleep(0.5)  # Pequeno atraso
+            webview.windows[0].destroy()
+            
+        threading.Thread(target=delayed_exit).start()
+        return True
+    
     def _get_save_filepath(self, file_type_desc, file_ext):
         """Open a native file dialog to get save filepath"""
         def run_dialog():
@@ -392,47 +471,24 @@ def get_resource_path(relative_path):
 
 def start_app():
     """Start the LazzFit application with PyWebView"""
-    # Verificar se estamos sendo executados diretamente ou via main.py
-    script_path = os.path.abspath(sys.argv[0])
-    main_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
-    
-    if os.path.basename(script_path) == "webview_app.py":
-        print("AVISO: Este arquivo não deve ser executado diretamente!")
-        print(f"Por favor, execute o aplicativo através do arquivo principal: python main.py")
-        
-        # Se mesmo assim prosseguir, informar o usuário visualmente
-        try:
-            import tkinter as tk
-            from tkinter import messagebox
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showwarning(
-                "Inicialização Incorreta",
-                "Você está tentando executar o aplicativo de forma incorreta.\n\n"
-                "Por favor, feche esta janela e execute o aplicativo através do comando:\n"
-                "python main.py"
-            )
-            root.destroy()
-        except:
-            pass  # Se não conseguir mostrar a caixa de diálogo, continue mesmo assim
-    
-    # Garantir que o banco de dados está em um local conhecido e persistente
+    # Garantir que o diretório de trabalho é o diretório do script
     script_dir = os.path.abspath(os.path.dirname(__file__))
-    print(f"Diretório do aplicativo: {script_dir}")
-    
-    # Garantir que estamos no diretório do script antes de inicializar a API
+    print(f"📂 Diretório do aplicativo: {script_dir}")
     os.chdir(script_dir)
     
-    # Criar diretório "data" se não existir, para guardar o banco de dados
-    data_dir = os.path.join(script_dir, "data")
-    if not os.path.exists(data_dir):
-        try:
-            os.makedirs(data_dir)
-            print(f"Diretório de dados criado: {data_dir}")
-        except Exception as e:
-            print(f"Não foi possível criar diretório de dados: {e}")
+    # Verificar se o processo tem permissões de escrita no diretório atual
+    try:
+        test_file = os.path.join(script_dir, "test_write_permission.tmp")
+        with open(test_file, 'w') as f:
+            f.write("test")
+        os.remove(test_file)
+        print("✓ Permissões de escrita verificadas: OK")
+    except Exception as e:
+        print(f"❌ ERRO: Sem permissão de escrita no diretório atual: {e}")
     
-    api = LazzFitAPI()
+    # Inicializar a API e torná-la globalmente acessível
+    global global_api
+    global_api = LazzFitAPI()
     
     # Determine web files location
     webui_dir = get_resource_path("webui")
@@ -484,17 +540,60 @@ def start_app():
     window = webview.create_window(
         "LazzFit - Gerenciador de Treinos de Corrida",
         url=os.path.join(webui_dir, "index.html"),
-        js_api=api,
+        js_api=global_api,  # Use a variável global
         width=1100,
         height=700,
         min_size=(800, 600)
     )
     
-    # Start the application with the appropriate configuration
-    if webview_config:
-        webview.start(**webview_config)
-    else:
-        webview.start(debug=True)
+    # Hook para injetar informações adicionais no JavaScript
+    def on_loaded():
+        print("✓ Evento 'loaded' disparado - Página web carregada")
+        window.evaluate_js("""
+            console.log('Verificação de API Python do servidor');
+            if (window.pywebview && window.pywebview.api) {
+                console.log('API Python detectada pelo servidor');
+                window._serverConfirmedAPI = true;
+            }
+        """)
+    
+    window.events.loaded += on_loaded
+
+    # CORREÇÃO: Adicionar gestão de evento de encerramento
+    def on_closing():
+        """Gerencia o processo de encerramento da aplicação"""
+        print("🔍 Evento de encerramento detectado. Garantindo persistência dos dados...")
+        
+        # Garantir que conexão do banco esteja fechada adequadamente
+        if global_api and hasattr(global_api, 'db'):
+            try:
+                # Forçar commit e disconnect explícitos
+                global_api.db.conn.commit()
+                global_api.db.disconnect()
+                print("✓ Banco de dados desconectado corretamente")
+            except Exception as e:
+                print(f"❌ Erro ao fechar conexão com banco: {e}")
+    
+    # Registrar eventos
+    window.events.closed += on_closing
+    
+    # Start the application with proper config - FIX HERE!
+    try:
+        if webview_config:
+            # Não passe debug=True explicitamente se já estiver em webview_config
+            webview.start(**webview_config)  # webview_config já contém debug=True
+        else:
+            webview.start(debug=True, http_server=True)
+    except Exception as e:
+        print(f"❌ ERRO ao iniciar PyWebView: {e}")
+        print(traceback.format_exc())
+        
+        # Tente uma vez mais com configuração mínima se a primeira tentativa falhar
+        try:
+            print("🔄 Tentando iniciar com configuração mínima...")
+            webview.start()
+        except Exception as e2:
+            print(f"❌ ERRO final ao iniciar PyWebView: {e2}")
 
 if __name__ == "__main__":
     start_app()

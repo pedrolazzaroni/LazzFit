@@ -107,6 +107,40 @@ body {
     text-align: center;
 }
 
+/* Estilo para o footer do sidebar com botão de Sair */
+.sidebar-footer {
+    margin-top: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.exit-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+}
+
+.exit-button:hover {
+    background-color: rgba(255, 75, 0, 0.7);
+}
+
+.exit-button .material-icons-round {
+    font-size: 18px;
+}
+
 /* Content area */
 .content {
     flex: 1;

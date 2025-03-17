@@ -973,4 +973,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
     window.app = app; // Make it accessible to pywebview
     app.init();
+    
+    // Configurar botão de saída
+    document.getElementById('exit-btn').addEventListener('click', async () => {
+        if (confirm('Deseja realmente sair do aplicativo?')) {
+            try {
+                // Mostrar uma notificação de saída
+                app.showNotification('Finalizando aplicativo...', 'info');
+                
+                // Pequeno delay para a notificação ser exibida
+                setTimeout(async () => {
+                    // Chamar método de saída no backend se disponível
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
+                        await window.pywebview.api.exit_app();
+                    }
+                }, 500);
+            } catch (error) {
+                console.error('Erro ao fechar aplicativo:', error);
+            }
+        }
+    });
 });
