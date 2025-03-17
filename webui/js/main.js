@@ -842,11 +842,10 @@ class App {
         try {
             this.showNotification('Preparando exportação...', 'info');
             const success = await api.exportToExcel();
-            if (success) {
-                this.showNotification('Dados exportados com sucesso para Excel!', 'success');
-            } else {
+            if (!success) {
                 this.showNotification('Falha ao exportar dados.', 'error');
             }
+            // Remoção da notificação duplicada de sucesso - o backend já mostra uma com o nome do arquivo
         } catch (error) {
             console.error('Export error:', error);
             this.showNotification('Erro ao exportar dados.', 'error');
@@ -860,11 +859,10 @@ class App {
         try {
             this.showNotification('Preparando exportação...', 'info');
             const success = await api.exportToCSV();
-            if (success) {
-                this.showNotification('Dados exportados com sucesso para CSV!', 'success');
-            } else {
+            if (!success) {
                 this.showNotification('Falha ao exportar dados.', 'error');
             }
+            // Remoção da notificação duplicada de sucesso - o backend já mostra uma com o nome do arquivo
         } catch (error) {
             console.error('Export error:', error);
             this.showNotification('Erro ao exportar dados.', 'error');

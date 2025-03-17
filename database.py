@@ -13,8 +13,9 @@ try:
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     EXCEL_AVAILABLE = True
+    print("✅ Módulo openpyxl encontrado - Exportação para Excel disponível.")
 except ImportError:
-    print("Módulo 'openpyxl' não encontrado. A exportação para Excel não estará disponível.")
+    print("⚠️ Módulo 'openpyxl' não encontrado. A exportação para Excel não estará disponível.")
     print("Para instalar o módulo, execute: pip install openpyxl")
 
 class DatabaseManager:
@@ -57,6 +58,9 @@ class DatabaseManager:
         ]
         
         self.transaction_active = False  # Controle de transação ativa
+        
+        # Atributo para indicar disponibilidade de Excel
+        self.EXCEL_AVAILABLE = EXCEL_AVAILABLE
         
     def connect(self):
         """Conecta ao banco de dados (sem iniciar transação)"""
@@ -399,8 +403,16 @@ class DatabaseManager:
             
     def export_runs_to_xlsx(self, file_path, run_ids=None):
         """Exporta os treinos para um arquivo Excel"""
-        if not EXCEL_AVAILABLE:
-            print("A exportação para Excel não está disponível porque o módulo 'openpyxl' não está instalado.")
+        # Verificar novamente se o openpyxl está disponível
+        excel_available = False
+        try:
+            import openpyxl
+            excel_available = True
+        except ImportError:
+            excel_available = False
+            
+        if not excel_available:
+            print("⚠️ A exportação para Excel não está disponível porque o módulo 'openpyxl' não está instalado.")
             return False
             
         if not self.connect():

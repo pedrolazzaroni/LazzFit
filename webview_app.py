@@ -209,8 +209,13 @@ class LazzFitAPI:
     def export_to_excel(self):
         """Export all runs to an Excel file"""
         try:
-            # Verificar se o módulo Excel está disponível
-            if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
+            # Verificação mais robusta do openpyxl
+            try:
+                import openpyxl
+                excel_available = True
+                print("✅ Verificação de openpyxl realizada com sucesso")
+            except ImportError:
+                excel_available = False
                 webview.windows[0].evaluate_js("""
                     app.showNotification(
                         'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
@@ -249,6 +254,7 @@ class LazzFitAPI:
             return success
         except Exception as e:
             print(f"Error exporting to Excel: {str(e)}")
+            print(traceback.format_exc())  # Adicionado para melhor diagnóstico
             webview.windows[0].evaluate_js(f"""
                 app.showNotification('Erro ao exportar: {str(e)}', 'error');
             """)
@@ -295,8 +301,12 @@ class LazzFitAPI:
     def export_selected_to_excel(self, run_ids):
         """Export selected runs to an Excel file"""
         try:
-            # Verificar se o módulo Excel está disponível
-            if not hasattr(self.db, 'EXCEL_AVAILABLE') or not self.db.EXCEL_AVAILABLE:
+            # Verificação mais robusta do openpyxl
+            try:
+                import openpyxl
+                excel_available = True
+            except ImportError:
+                excel_available = False
                 webview.windows[0].evaluate_js("""
                     app.showNotification(
                         'O módulo openpyxl não está instalado. Execute o seguinte comando no terminal: pip install openpyxl',
