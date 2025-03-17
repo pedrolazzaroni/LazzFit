@@ -1,60 +1,118 @@
 # LazzFit - Gerenciador de Treinos de Corrida
 
-## Descrição
-LazzFit é uma aplicação desktop desenvolvida em Python para gerenciar e acompanhar seus treinos de corrida. Com uma interface moderna e interativa, você pode registrar suas corridas, visualizar estatísticas e acompanhar seu progresso ao longo do tempo.
+LazzFit é uma aplicação desktop para gerenciar e visualizar seus treinos de corrida, desenvolvida com PyWebView, HTML/CSS/JavaScript e SQLite.
 
-## Recursos
-- Design moderno com cards interativos e animações
-- Registro completo de treinos com:
-  - Data e distância
-  - Duração e ritmo automático
-  - BPM médio e máximo
-  - Ganho de elevação
-  - Calorias queimadas
-  - Tipo de treino personalizável
-  - Notas/observações
-- Dashboard com estatísticas gerais e gráficos
-- Visualização de treinos em cards interativos
-- Exportação de dados para Excel ou CSV
-- Gráficos detalhados para análise de desempenho
-- Sistema de abas para organizar estatísticas
-- Interface responsiva e amigável
+![LazzFit Screenshot](screenshots/lazzfit.png)
 
-## Requisitos
-- Python 3.8 ou superior
-- Bibliotecas listadas em requirements.txt
+## Características Principais
+
+- Interface moderna e responsiva
+- Armazenamento local de dados (não requer conexão à internet)
+- Dashboard com estatísticas principais
+- Gerenciamento completo de treinos
+- Visualização de estatísticas e gráficos de desempenho
+- Exportação para Excel e CSV
+
+## Requisitos do Sistema
+
+- Python 3.7 ou superior
+- Módulos Python:
+  - pywebview
+  - openpyxl (para exportação Excel)
+- Sistema operacional: Windows, MacOS ou Linux
 
 ## Instalação
 
 1. Clone o repositório ou baixe os arquivos
-2. Instale as dependências necessárias:
+2. Instale as dependências:
+   ```
+   pip install pywebview openpyxl
+   ```
+3. Execute o aplicativo:
+   ```
+   python main.py
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+## Funcionalidades
 
-3. Execute o programa:
+### Dashboard
 
-```bash
-python main.py
-```
+- Visualização rápida de estatísticas importantes:
+  - Total de treinos
+  - Distância total percorrida
+  - Tempo total de corrida
+  - Ritmo médio
+- Gráfico de treinos recentes
+
+### Gerenciamento de Treinos
+
+- **Listar Treinos**: Visualize todos os seus treinos em ordem cronológica
+- **Adicionar Treino**: Registre novos treinos com detalhes como:
+  - Data
+  - Tipo de treino (Corrida de Rua, Trail Running, etc.)
+  - Distância percorrida (km)
+  - Duração (minutos)
+  - BPM médio e máximo (batimentos cardíacos)
+  - Ganho de elevação (metros)
+  - Calorias queimadas
+  - Notas pessoais
+- **Editar Treino**: Atualize informações de treinos existentes
+- **Excluir Treino**: Remova treinos que não deseja mais acompanhar
+- **Seleção Múltipla**: Selecione vários treinos para exportação ou outras ações
+
+### Estatísticas
+
+- **Distância & Duração**: Gráficos mostrando evolução ao longo do tempo
+- **Ritmo & Cardio**: Análise do ritmo e frequência cardíaca
+- **Resumo**: Visão geral de todas as estatísticas importantes e evolução mensal:
+  - Total de treinos
+  - Distância total e média
+  - Tempo total e duração média
+  - Ritmo médio
+  - BPM médio (se disponível)
+  - Ganho de elevação total (se disponível)
+
+### Exportação de Dados
+
+- **Exportar para Excel**: Exporte todos ou apenas treinos selecionados para um arquivo Excel (.xlsx)
+- **Exportar para CSV**: Exporte todos ou apenas treinos selecionados para um arquivo CSV
+
+### Outras Funcionalidades
+
+- **Design Responsivo**: Interface adaptável a diferentes tamanhos de tela
+- **Feedback Visual**: Notificações para ações e operações realizadas
+- **Armazenamento Local**: Banco de dados SQLite para armazenar seus treinos
+- **Saída Segura**: Garantia de persistência dos dados ao fechar o programa
 
 ## Uso
 
-### Dashboard
-Visualize estatísticas gerais dos seus treinos, incluindo distância total, número de corridas, tempo total e ritmo médio, em um layout moderno com cards e gráficos interativos.
+1. **Dashboard**: Visualize suas estatísticas principais
+2. **Treinos**: Gerencie seus registros (adicionar, editar, excluir)
+3. **Novo Treino**: Adicione um novo registro de corrida
+4. **Estatísticas**: Analise seu progresso ao longo do tempo
 
-### Listar Corridas
-Veja todos os seus treinos em formato de cards interativos. Cada card exibe as informações principais do treino e pode ser expandido para mostrar mais detalhes. Os cards também possuem botões para editar ou excluir registros.
+## Exportação de Dados
 
-### Nova Corrida
-Adicione um novo treino preenchendo o formulário com os dados necessários, incluindo distância, duração, tipo de treino, BPM, elevação, e outros dados relevantes.
+Para exportar seus dados:
 
-### Estatísticas
-Analise seu desempenho através de gráficos organizados em abas que mostram a evolução da distância, duração, ritmo, frequência cardíaca e outros indicadores importantes.
+1. Na tela de Treinos, use os botões "Exportar CSV" ou "Exportar Excel"
+2. Ou selecione treinos específicos e clique em "Exportar Selecionados"
+3. Escolha o local e nome do arquivo para salvar
 
-### Exportar Dados
-Exporte seus treinos para arquivos Excel formatados ou CSV, que podem ser usados em outras ferramentas de análise ou compartilhados com seu treinador.
+## Resolução de Problemas
 
-## Personalização
-O LazzFit foi desenvolvido com uma paleta de cores laranja e preto, mas você pode personalizar facilmente o código para usar outras cores de sua preferência.
+- **Erro ao exportar para Excel**: Se receber um erro relacionado ao openpyxl, execute:
+  ```
+  pip install openpyxl
+  ```
+  O programa tentará instalar automaticamente, mas pode requerer permissões de administrador.
+
+- **Banco de dados não encontrado**: O aplicativo cria automaticamente um banco de dados em `data/lazzfit.db`. Se houver problemas, verifique permissões de escrita no diretório.
+
+## Créditos
+
+Desenvolvido por [Seu Nome]
+
+## Licença
+
+Este projeto está licenciado sob [sua licença de escolha].
