@@ -31,6 +31,17 @@ class App {
             // Show loading state
             this.showLoading();
             
+            // Verifica conexão com o banco de dados
+            const dbConnected = await api.checkDatabaseConnection();
+            
+            if (!dbConnected) {
+                this.showNotification(
+                    "Não foi possível conectar ao banco de dados. Algumas funcionalidades podem não estar disponíveis.",
+                    "warning",
+                    "database-warning"
+                );
+            }
+            
             // Fetch initial data
             this.runs = await api.getAllRuns();
             
@@ -889,8 +900,9 @@ class App {
      * Show notification
      * @param {string} message - Message to show
      * @param {string} type - Type of notification (success, error, info)
+     * @param {string} [id] - Optional ID for the notification
      */
-    showNotification(message, type = 'info') {
+    showNotification(message, type = 'info', id = null) {
         // Create notification container if it doesn't exist
         let container = document.querySelector('.notifications-container');
         
@@ -901,7 +913,7 @@ class App {
         }
         
         // Create and add notification
-        const notification = components.createNotification(message, type);
+        const notification = components.createNotification(message, type, id);
         container.appendChild(notification);
     }
     
@@ -941,6 +953,17 @@ class App {
                     'warning'
                 );
             }
+        });
+    }
+
+    /**
+     * Limpa notificações de erro de banco de dados
+     */
+    clearDatabaseErrorNotifications() {
+        const notifications = document.querySelectorAll('.notification[data-id="database-error"]');
+        notifications.forEach(notification => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
         });
     }
 }

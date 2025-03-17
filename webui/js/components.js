@@ -124,11 +124,16 @@ class UIComponents {
      * Create a notification element
      * @param {string} message - The notification message
      * @param {string} type - Notification type (success, error, info)
+     * @param {string} [id] - Optional ID for the notification
      * @returns {HTMLElement} The notification element
      */
-    createNotification(message, type = 'info') {
+    createNotification(message, type = 'info', id = null) {
         const notification = document.createElement('div');
         notification.className = `notification ${type} animate-fade-in`;
+        
+        if (id) {
+            notification.dataset.id = id;
+        }
         
         const icon = document.createElement('span');
         icon.className = 'material-icons-round';

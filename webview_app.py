@@ -3,14 +3,75 @@ import os
 import sys
 import json
 import threading
+import time
+import sqlite3
+import traceback
 from tkinter import Tk, filedialog
 from database import DatabaseManager
 
 class LazzFitAPI:
     def __init__(self):
-        self.db = DatabaseManager("lazzfit.db")
+        # Usar caminho absoluto para o banco de dados em um local persistente e fixo
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(self.script_dir, "data")
+        
+        # Garantir que o diretório data existe
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+            
+        self.db_path = os.path.join(data_dir, "lazzfit.db")
+        print(f"Inicializando banco de dados: {self.db_path}")
+        
+        # Verifica se o banco de dados já existe, mas de forma menos agressiva
+        self.check_database_health()
+        
+        # Inicializa o banco de dados
+        self.db = DatabaseManager(self.db_path)
         self.db.setup()
         
+        # Teste de verificação para garantir que está funcionando
+        try:
+            test_runs = self.db.get_all_runs()
+            print(f"Banco de dados conectado com sucesso! {len(test_runs)} registros encontrados.")
+        except Exception as e:
+            print(f"ERRO ao acessar o banco de dados: {e}")
+            print(traceback.format_exc())  # Adicionado para mostrar o erro completo
+    
+    def check_database_health(self):
+        """Verifica a saúde do banco de dados com menos agressividade"""
+        # Se o banco de dados já existe, apenas verifica se é possível abri-lo
+        if os.path.exists(self.db_path):
+            try:
+                # Tenta apenas abrir o banco sem executar verificações complexas
+                conn = sqlite3.connect(self.db_path)
+                conn.close()
+                print("Verificação simples de banco de dados: OK")
+            except sqlite3.Error as e:
+                print(f"ERRO ao abrir banco de dados: {e}")
+                print("Tentando criar backup e reiniciar banco de dados...")
+                self.backup_and_reset_database()
+        else:
+            print("Banco de dados não existe. Será criado um novo.")
+    
+    def backup_and_reset_database(self):
+        """Cria um backup do banco de dados atual e cria um novo"""
+        try:
+            # Criar backup com timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = os.path.join(self.script_dir, f"lazzfit_backup_{timestamp}.db")
+            
+            if os.path.exists(self.db_path):
+                import shutil
+                shutil.copy2(self.db_path, backup_path)
+                print(f"Backup criado: {backup_path}")
+                
+                # Remover banco de dados original
+                os.remove(self.db_path)
+                print("Banco de dados original removido. Um novo será criado.")
+        except Exception as e:
+            print(f"Erro ao fazer backup do banco de dados: {e}")
+
     def get_all_runs(self):
         """Get all runs from database and convert to a web-friendly format"""
         runs = self.db.get_all_runs()
@@ -45,7 +106,6 @@ class LazzFitAPI:
             
             # Return the newly added run
             return self.get_run(run_id)
-            
         except Exception as e:
             print(f"Error adding run: {str(e)}")
             return None
@@ -72,7 +132,6 @@ class LazzFitAPI:
             
             # Return the updated run
             return self.get_run(run_id)
-            
         except Exception as e:
             print(f"Error updating run: {str(e)}")
             return None
@@ -269,7 +328,6 @@ class LazzFitAPI:
             root = Tk()
             root.withdraw()  # Hide the main window
             root.attributes('-topmost', True)  # Ensure dialog appears on top
-            
             file_path = filedialog.asksaveasfilename(
                 title="Salvar Como",
                 filetypes=[(file_type_desc, f"*{file_ext}"), ("All Files", "*.*")],
@@ -294,7 +352,6 @@ class LazzFitAPI:
             # Clean up the temporary file
             if os.path.exists("temp_path.txt"):
                 os.remove("temp_path.txt")
-                
             return file_path
         except Exception as e:
             print(f"Error getting save path: {e}")
@@ -309,7 +366,6 @@ class LazzFitAPI:
                 return val if val is not None else default
             except IndexError:
                 return default
-                
         return {
             'id': safe_get(run, 0),
             'date': safe_get(run, 1),
@@ -336,6 +392,46 @@ def get_resource_path(relative_path):
 
 def start_app():
     """Start the LazzFit application with PyWebView"""
+    # Verificar se estamos sendo executados diretamente ou via main.py
+    script_path = os.path.abspath(sys.argv[0])
+    main_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
+    
+    if os.path.basename(script_path) == "webview_app.py":
+        print("AVISO: Este arquivo não deve ser executado diretamente!")
+        print(f"Por favor, execute o aplicativo através do arquivo principal: python main.py")
+        
+        # Se mesmo assim prosseguir, informar o usuário visualmente
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning(
+                "Inicialização Incorreta",
+                "Você está tentando executar o aplicativo de forma incorreta.\n\n"
+                "Por favor, feche esta janela e execute o aplicativo através do comando:\n"
+                "python main.py"
+            )
+            root.destroy()
+        except:
+            pass  # Se não conseguir mostrar a caixa de diálogo, continue mesmo assim
+    
+    # Garantir que o banco de dados está em um local conhecido e persistente
+    script_dir = os.path.abspath(os.path.dirname(__file__))
+    print(f"Diretório do aplicativo: {script_dir}")
+    
+    # Garantir que estamos no diretório do script antes de inicializar a API
+    os.chdir(script_dir)
+    
+    # Criar diretório "data" se não existir, para guardar o banco de dados
+    data_dir = os.path.join(script_dir, "data")
+    if not os.path.exists(data_dir):
+        try:
+            os.makedirs(data_dir)
+            print(f"Diretório de dados criado: {data_dir}")
+        except Exception as e:
+            print(f"Não foi possível criar diretório de dados: {e}")
+    
     api = LazzFitAPI()
     
     # Determine web files location
@@ -343,7 +439,6 @@ def start_app():
     if not os.path.exists(webui_dir):
         print(f"Web UI directory not found at {webui_dir}, using current directory + /webui")
         webui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webui")
-        
         # Verificação adicional para ajudar usuários em caso de problemas
         if not os.path.exists(webui_dir):
             print("ERRO: Pasta 'webui' não encontrada! Execute start_lazzfit.bat para configuração automática.")
