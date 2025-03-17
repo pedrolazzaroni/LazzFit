@@ -384,22 +384,32 @@ class LazzFitAPI:
         
         try:
             # Garantir que qualquer operação pendente no banco de dados seja concluída
-            if hasattr(self, 'db') and self.db.conn:
-                self.db.conn.commit()
-                self.db.disconnect()
-                print("✓ Banco de dados desconectado corretamente")
+            if hasattr(self, 'db'):
+                try:
+                    self.db.ensure_connection_closed()
+                    print("✓ Garantido que o banco de dados foi fechado corretamente")
+                except Exception as db_error:
+                    print(f"⚠️ Aviso ao fechar banco: {db_error}")
         except Exception as e:
             print(f"❌ Erro ao fechar conexão com banco: {e}")
+            print(traceback.format_exc())
         
         # Encerrar a aplicação de forma segura com pequeno atraso
-        # para garantir que as operações de limpeza sejam concluídas
         def delayed_exit():
-            time.sleep(0.5)  # Pequeno atraso
-            webview.windows[0].destroy()
+            time.sleep(1.5)  # Atraso maior para garantir que operações pendentes sejam concluídas
+            try:
+                webview.windows[0].destroy()
+                print("✓ Janela principal destruída")
+            except Exception as e:
+                print(f"❌ Erro ao destruir janela: {e}")
+                sys.exit(0)  # Forçar saída em caso de erro
             
-        threading.Thread(target=delayed_exit).start()
+        # Iniciar thread e aguardar sua conclusão
+        exit_thread = threading.Thread(target=delayed_exit)
+        exit_thread.daemon = False  # Não é daemon para garantir que seja concluída
+        exit_thread.start()
         return True
-    
+        
     def _get_save_filepath(self, file_type_desc, file_ext):
         """Open a native file dialog to get save filepath"""
         def run_dialog():
@@ -567,15 +577,14 @@ def start_app():
         # Garantir que conexão do banco esteja fechada adequadamente
         if global_api and hasattr(global_api, 'db'):
             try:
-                # Forçar commit e disconnect explícitos
-                global_api.db.conn.commit()
-                global_api.db.disconnect()
-                print("✓ Banco de dados desconectado corretamente")
+                global_api.db.ensure_connection_closed()
+                print("✓ Banco de dados desconectado corretamente no evento de encerramento")
             except Exception as e:
                 print(f"❌ Erro ao fechar conexão com banco: {e}")
     
     # Registrar eventos
-    window.events.closed += on_closing
+    window.events.closed += on_closing  # Certifique-se de que este evento está correto
+    window.events.closing += on_closing  # Adicionar um listener para o evento "closing" também
     
     # Start the application with proper config - FIX HERE!
     try:

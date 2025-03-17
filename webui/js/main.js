@@ -8,6 +8,7 @@ class App {
         this.viewContainer = document.getElementById('view-container');
         this.runs = [];
         this.initialized = false;
+        this.dataLoaded = false;  // Novo flag para controlar carregamento de dados
         
         // Map view names to their handler methods
         this.viewHandlers = {
@@ -42,8 +43,9 @@ class App {
                 );
             }
             
-            // Fetch initial data
-            this.runs = await api.getAllRuns();
+            // CORREÇÃO: Aguardar explicitamente o carregamento dos dados
+            console.log("🔄 Carregando dados dos treinos...");
+            await this.loadRunData();
             
             // Show dashboard as default view
             this.navigate('dashboard');
@@ -57,6 +59,46 @@ class App {
             this.showError('Falha ao inicializar o aplicativo. Por favor, recarregue a página.');
         } finally {
             this.hideLoading();
+        }
+    }
+    
+    // NOVA FUNÇÃO: Separar o carregamento de dados em uma função específica
+    async loadRunData() {
+        try {
+            console.log("📊 Buscando treinos no banco de dados...");
+            // Garantir que a API está inicializada
+            if (!api.initialized) {
+                console.log("⏳ Aguardando inicialização da API...");
+                await new Promise(resolve => {
+                    const checkInterval = setInterval(() => {
+                        if (api.initialized) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    // Timeout após 5 segundos
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        console.warn("⚠️ Timeout ao aguardar API");
+                        resolve();
+                    }, 5000);
+                });
+            }
+            
+            const runsData = await api.getAllRuns();
+            console.log(`✅ ${runsData.length} treinos carregados com sucesso`);
+            
+            // Atualizar a lista de treinos
+            this.runs = runsData;
+            this.dataLoaded = true;
+            
+            return runsData;
+        } catch (error) {
+            console.error("❌ Erro ao carregar dados dos treinos:", error);
+            this.showNotification("Erro ao carregar treinos. Por favor, tente novamente mais tarde.", "error");
+            this.runs = [];
+            return [];
         }
     }
     
@@ -94,6 +136,27 @@ class App {
             return;
         }
         
+        // CORREÇÃO: Garantir que os dados estão carregados antes de navegar
+        // especialmente importante para o dashboard
+        if (!this.dataLoaded && viewName === 'dashboard') {
+            console.log("🔄 Dados não carregados, tentando carregar primeiro...");
+            this.showLoading();
+            
+            this.loadRunData().then(() => {
+                this.hideLoading();
+                this._executeNavigation(viewName, params);
+            }).catch(error => {
+                console.error("Erro ao carregar dados:", error);
+                this.hideLoading();
+                this._executeNavigation(viewName, params);
+            });
+        } else {
+            this._executeNavigation(viewName, params);
+        }
+    }
+    
+    // NOVA FUNÇÃO: Separar a lógica de navegação
+    _executeNavigation(viewName, params) {
         // Update navigation highlighting
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
@@ -189,6 +252,44 @@ class App {
         // Insert into the DOM
         this.viewContainer.appendChild(runsView);
         
+        // CORREÇÃO: Se não tiver dados carregados, tenta carregar novamente
+        if (!this.dataLoaded || this.runs.length === 0) {
+            console.log("🔄 Recarregando dados na view de treinos...");
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.innerHTML = '<div class="loading-spinner"></div><p>Carregando treinos...</p>';
+            
+            const runsContainer = document.getElementById('runs-container');
+            runsContainer.innerHTML = '';
+            runsContainer.appendChild(loadingIndicator);
+            
+            this.loadRunData().then(() => {
+                // Remover indicador e continuar com a renderização
+                loadingIndicator.remove();
+                this._renderRunsView();
+            }).catch(() => {
+                // Em caso de erro, mostrar estado vazio
+                loadingIndicator.remove();
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = `
+                    <span class="material-icons-round">error_outline</span>
+                    <p>Não foi possível carregar os treinos. Por favor, tente novamente.</p>
+                    <button id="retry-load-btn" class="btn primary">Tentar Novamente</button>
+                `;
+                runsContainer.appendChild(emptyState);
+                
+                document.getElementById('retry-load-btn').addEventListener('click', () => {
+                    this.navigate('runs');
+                });
+            });
+        } else {
+            this._renderRunsView();
+        }
+    }
+    
+    // NOVA FUNÇÃO: Separar a lógica de renderização das corridas
+    _renderRunsView() {
         // Create selection toolbar
         const selectionToolbar = document.createElement('div');
         selectionToolbar.className = 'selection-toolbar';
@@ -225,21 +326,22 @@ class App {
         document.getElementById('clear-selection-btn').addEventListener('click', () => this.clearRunSelection());
         
         const runsContainer = document.getElementById('runs-container');
+        runsContainer.innerHTML = ''; // Limpar conteúdo anterior
         
         // If no data, show empty state
         if (this.runs.length === 0) {
-            const emptyState = runsContainer.querySelector('.empty-state');
-            emptyState.style.display = 'flex';
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.innerHTML = `
+                <span class="material-icons-round">directions_run</span>
+                <p>Nenhum treino registrado ainda.</p>
+                <button id="add-first-run" class="btn primary">Adicionar Primeiro Treino</button>
+            `;
+            runsContainer.appendChild(emptyState);
             document.getElementById('add-first-run').addEventListener('click', () => {
                 this.navigate('add-run');
             });
             return;
-        }
-        
-        // Hide empty state if it exists
-        const emptyState = runsContainer.querySelector('.empty-state');
-        if (emptyState) {
-            emptyState.style.display = 'none';
         }
         
         // Create run cards
@@ -972,25 +1074,43 @@ class App {
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
     window.app = app; // Make it accessible to pywebview
-    app.init();
     
-    // Configurar botão de saída
-    document.getElementById('exit-btn').addEventListener('click', async () => {
-        if (confirm('Deseja realmente sair do aplicativo?')) {
-            try {
-                // Mostrar uma notificação de saída
-                app.showNotification('Finalizando aplicativo...', 'info');
-                
-                // Pequeno delay para a notificação ser exibida
-                setTimeout(async () => {
-                    // Chamar método de saída no backend se disponível
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
-                        await window.pywebview.api.exit_app();
-                    }
-                }, 500);
-            } catch (error) {
-                console.error('Erro ao fechar aplicativo:', error);
+    // CORREÇÃO: Garantir que a API esteja pronta antes de inicializar o app
+    if (api.initialized) {
+        app.init();
+    } else {
+        console.log("🔍 API não inicializada. Aguardando inicialização...");
+        // Configurar um observador para inicializar quando a API estiver pronta
+        const apiReadyCheck = setInterval(() => {
+            if (api.initialized) {
+                clearInterval(apiReadyCheck);
+                app.init();
             }
+        }, 100);
+        
+        // Timeout após 10 segundos
+        setTimeout(() => {
+            clearInterval(apiReadyCheck);
+            console.warn("⚠️ Timeout ao aguardar API. Tentando inicializar mesmo assim...");
+            app.init();
+        }, 10000);
+    }
+    
+    // Configurar botão de saída - removida a confirmação
+    document.getElementById('exit-btn').addEventListener('click', async () => {
+        try {
+            // Mostrar uma notificação de saída
+            app.showNotification('Finalizando aplicativo...', 'info');
+            
+            // Pequeno delay para a notificação ser exibida
+            setTimeout(async () => {
+                // Chamar método de saída no backend se disponível
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
+                    await window.pywebview.api.exit_app();
+                }
+            }, 500);
+        } catch (error) {
+            console.error('Erro ao fechar aplicativo:', error);
         }
     });
 });

@@ -12,12 +12,16 @@ def cleanup():
     # Tentar garantir que conexão com banco está fechada
     try:
         from webview_app import global_api
-        if global_api and hasattr(global_api, 'db') and global_api.db.conn:
-            global_api.db.conn.commit()
-            global_api.db.disconnect()
-            print("✓ Banco de dados desconectado adequadamente")
+        if global_api and hasattr(global_api, 'db'):
+            try:
+                global_api.db.ensure_connection_closed()
+                print("✓ Conexão fechada na limpeza final")
+            except Exception as e:
+                print(f"❌ Erro ao salvar dados finais: {e}")
+                import traceback
+                print(traceback.format_exc())
     except Exception as e:
-        print(f"❓ Informação: {e}")
+        print(f"ℹ️ Durante limpeza: {e}")
 
 def main():
     """Main application launcher with UI mode selection"""

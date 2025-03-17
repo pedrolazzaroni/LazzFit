@@ -7,6 +7,7 @@ const api = {
     initialized: false,
     initAttempts: 0,
     maxInitAttempts: 15,  // Aumentado para 15 tentativas
+    lastFetchedRuns: null, // NOVA PROPRIEDADE: Armazena o último resultado de getAllRuns
     
     /**
      * Inicializa a API e verifica o ambiente
@@ -165,16 +166,39 @@ const api = {
      */
     getAllRuns: async function() {
         try {
+            if (!this.isPyWebView && !this.initialized) {
+                await this.init();
+            }
+            
             if (this.isPyWebView) {
                 // Executando no PyWebView - chamar diretamente a API Python
-                return await window.pywebview.api.get_all_runs();
+                console.log("📊 Buscando treinos do servidor Python...");
+                const runs = await window.pywebview.api.get_all_runs();
+                console.log(`✅ Recebidos ${runs.length} treinos do servidor`);
+                
+                // CORREÇÃO: Armazenar resultado para uso em caso de falha futura
+                this.lastFetchedRuns = runs;
+                return runs;
             } else {
-                // Sem ambiente PyWebView, alerta sobre a impossibilidade de carregar dados
+                // Sem ambiente PyWebView, verificar se temos dados em cache
+                if (this.lastFetchedRuns) {
+                    console.log("📊 Usando dados de treinos em cache");
+                    return this.lastFetchedRuns;
+                }
+                
+                // Sem cache disponível, alerta sobre a impossibilidade de carregar dados
                 this.showDatabaseError();
                 return [];
             }
         } catch (error) {
             console.error("Erro ao buscar corridas:", error);
+            
+            // CORREÇÃO: Em caso de erro, retornar o cache se disponível
+            if (this.lastFetchedRuns) {
+                console.log("⚠️ Erro ao buscar treinos. Usando dados em cache...");
+                return this.lastFetchedRuns;
+            }
+            
             this.showDatabaseError();
             return [];
         }
@@ -381,38 +405,27 @@ const api = {
     }
 };
 
-// Adicionar evento específico para PyWebView
-document.addEventListener('pywebviewready', function() {
-    console.log("✅ Evento pywebviewready recebido!");
-    document.body.classList.add('pywebview-ready');
-    setTimeout(() => api.init(), 100);
-});
-
-// Inicializar API quando o documento estiver carregado com um leve atraso
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("🔍 Documento carregado, inicializando sistema...");
+// CORREÇÃO: Inicializar API imediatamente e na ordem correta
+(function initializeAPI() {
+    console.log("🚀 Inicializando API imediatamente na carga do script...");
+    api.init();
     
-    // Dar um tempo para o PyWebView inicializar completamente
-    setTimeout(() => {
-        api.init();
-        
-        // Também verificar conexão com banco de dados após a inicialização completa
-        setTimeout(async () => {
-            await api.checkDatabaseConnection();
-        }, 2000);
-        
-        // Monitorar continuamente a disponibilidade do API Python
-        const apiCheckInterval = setInterval(() => {
-            if (api.initialized) {
-                console.log("✅ API inicializada com sucesso, parando monitoramento");
-                clearInterval(apiCheckInterval);
-            } else if (window.pywebview !== undefined && typeof window.pywebview.api === 'object') {
-                console.log("✅ API Python detectada durante monitoramento");
-                api.init();
-            }
-        }, 1000);
-    }, 500); // Atraso inicial de 500ms
-});
+    // Adicionar evento específico para PyWebView
+    document.addEventListener('pywebviewready', function() {
+        console.log("✅ Evento pywebviewready recebido!");
+        document.body.classList.add('pywebview-ready');
+        setTimeout(() => api.init(), 100);
+    });
+
+    // Também configurar inicialização no carregamento do documento
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("🔍 Documento carregado, verificando estado da API...");
+        if (!api.initialized) {
+            console.log("⚠️ API ainda não inicializada no carregamento do documento. Tentando novamente...");
+            setTimeout(() => api.init(), 200);
+        }
+    });
+})();
 
 // Exportar a API para uso global
 window.api = api;
