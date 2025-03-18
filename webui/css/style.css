@@ -932,20 +932,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
 }
 
 .dialog {
     background: var(--card-bg);
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius);
     width: 90%;
-    max-width: 500px;
+    max-width: 700px; /* Aumentado para melhor visualização */
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    overflow: hidden;
+    overflow: visible; /* Alterado para permitir que o conteúdo ultrapasse */
     position: relative;
-    max-height: 90vh;
     display: flex;
     flex-direction: column;
+    margin: auto; /* Centraliza na tela */
+    max-height: 90vh; /* Limita altura máxima */
 }
 
 .dialog::before {
@@ -998,9 +1001,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dialog-content {
     padding: 20px;
     overflow-y: auto;
-    max-height: 70vh;
+    flex: 1;
+    max-height: 70vh; /* Máximo de altura para diálogo grande */
     color: var(--light-gray);
     line-height: 1.6;
+}
+
+/* Ajuste para formulários dentro de diálogos */
+.dialog .form-row {
+    flex-wrap: wrap;
+}
+
+.dialog .form-group {
+    flex: 1 1 200px;
+    min-width: 200px;
 }
 
 .dialog-actions {

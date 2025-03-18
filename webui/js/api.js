@@ -402,6 +402,161 @@ const api = {
             console.error(`- _serverConfirmedAPI: ${window._serverConfirmedAPI}`);
             console.error(`- Body tem classe pywebview-ready: ${document.body.classList.contains('pywebview-ready')}`);
         }
+    },
+
+    // PLANOS DE TREINO
+    
+    /**
+     * Obter todos os planos de treino
+     * @returns {Promise<Array>} Lista de planos de treino
+     */
+    async getAllTrainingPlans() {
+        if (this.isPyWebView) {
+            try {
+                return await window.pywebview.api.get_all_training_plans();
+            } catch (error) {
+                console.error("Erro ao obter planos de treino:", error);
+                return [];
+            }
+        } else {
+            console.log("Modo de desenvolvimento: simulando obtenção de planos");
+            await new Promise(r => setTimeout(r, 500));
+            return this.getMockPlans();
+        }
+    },
+    
+    /**
+     * Obter detalhes de um plano de treino específico
+     * @param {number} planId - ID do plano
+     * @returns {Promise<Object|null>} Detalhes do plano ou null se não encontrado
+     */
+    async getTrainingPlan(planId) {
+        if (this.isPyWebView) {
+            try {
+                return await window.pywebview.api.get_training_plan(planId);
+            } catch (error) {
+                console.error(`Erro ao obter plano ${planId}:`, error);
+                return null;
+            }
+        } else {
+            console.log(`Modo de desenvolvimento: simulando obtenção do plano ${planId}`);
+            await new Promise(r => setTimeout(r, 500));
+            const plan = this.getMockPlans().find(p => p.id === planId);
+            if (!plan) return null;
+            
+            // Simular dados adicionais para o plano
+            return {
+                ...plan,
+                notes: "Notas de exemplo para este plano.",
+                weeks: [
+                    {
+                        id: 1,
+                        week_number: 1,
+                        focus: "Adaptação",
+                        total_distance: 30,
+                        notes: "Foco em volume baixo para adaptação",
+                        sessions: []
+                    }
+                    // Outras semanas seriam geradas automaticamente
+                ]
+            };
+        }
+    },
+    
+    /**
+     * Criar um novo plano de treino
+     * @param {Object} planData - Dados do plano a ser criado
+     * @returns {Promise<boolean>} Sucesso da operação
+     */
+    async createTrainingPlan(planData) {
+        if (this.isPyWebView) {
+            try {
+                return await window.pywebview.api.create_training_plan(planData);
+            } catch (error) {
+                console.error("Erro ao criar plano de treino:", error);
+                return false;
+            }
+        } else {
+            console.log("Modo de desenvolvimento: simulando criação de plano", planData);
+            await new Promise(r => setTimeout(r, 800));
+            return true;
+        }
+    },
+    
+    /**
+     * Excluir um plano de treino
+     * @param {number} planId - ID do plano a ser excluído
+     * @returns {Promise<boolean>} Sucesso da operação
+     */
+    async deleteTrainingPlan(planId) {
+        if (this.isPyWebView) {
+            try {
+                return await window.pywebview.api.delete_training_plan(planId);
+            } catch (error) {
+                console.error(`Erro ao excluir plano ${planId}:`, error);
+                return false;
+            }
+        } else {
+            console.log(`Modo de desenvolvimento: simulando exclusão do plano ${planId}`);
+            await new Promise(r => setTimeout(r, 600));
+            return true;
+        }
+    },
+    
+    /**
+     * Exportar plano de treino para Excel
+     * @param {number} planId - ID do plano a ser exportado
+     * @returns {Promise<Object>} Resultado da operação
+     */
+    async exportTrainingPlanToExcel(planId) {
+        if (this.isPyWebView) {
+            try {
+                return await window.pywebview.api.export_training_plan_to_xlsx(planId);
+            } catch (error) {
+                console.error(`Erro ao exportar plano ${planId}:`, error);
+                return { success: false, error: error.toString() };
+            }
+        } else {
+            console.log(`Modo de desenvolvimento: simulando exportação do plano ${planId} para Excel`);
+            await new Promise(r => setTimeout(r, 1000));
+            return { 
+                success: true, 
+                path: "C:/Users/exemplo/Downloads/plano_treino.xlsx"
+            };
+        }
+    },
+    
+    // Dados simulados para desenvolvimento
+    getMockPlans() {
+        return [
+            {
+                id: 1,
+                name: "Plano para 5K",
+                goal: "Completar 5K em menos de 30 minutos",
+                duration_weeks: 4,
+                level: "Iniciante",
+                created_at: "2023-05-01 10:00:00",
+                updated_at: "2023-05-15 14:30:00"
+            },
+            {
+                id: 2,
+                name: "Preparação para 10K",
+                goal: "Melhorar ritmo em corridas de 10K",
+                duration_weeks: 8,
+                level: "Intermediário",
+                created_at: "2023-06-01 09:15:00",
+                updated_at: "2023-06-10 16:45:00"
+            },
+            {
+                id: 3,
+                name: "Plano Meia Maratona",
+                goal: "Completar meia maratona",
+                duration_weeks: 12,
+                level: "Avançado",
+                created_at: "2023-07-15 08:20:00",
+                updated_at: "2023-07-15 08:20:00"
+            }
+        ];
     }
 };
 
@@ -429,3 +584,27 @@ const api = {
 
 // Exportar a API para uso global
 window.api = api;
+
+// ...existing code...
+
+/**
+ * Obter todos os planos de treino
+ * @returns {Promise<Array>} Lista de planos de treino
+ */
+api.getAllTrainingPlans = async function() {
+    if (this.isPyWebView) {
+        try {
+            return await window.pywebview.api.get_all_training_plans();
+        } catch (error) {
+            console.error("Erro ao obter planos de treino:", error);
+            // Fallback para dados de exemplo em caso de erro
+            return this.getMockPlans();
+        }
+    } else {
+        console.log("Modo de desenvolvimento: simulando obtenção de planos");
+        await new Promise(r => setTimeout(r, 500));
+        return this.getMockPlans();
+    }
+};
+
+// ...existing code...
