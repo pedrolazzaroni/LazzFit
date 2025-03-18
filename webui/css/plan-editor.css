@@ -1,0 +1,341 @@
+/* Estilos para o editor de planos de treino */
+
+.edit-plan-view {
+    padding: 20px;
+}
+
+.progress-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    padding: 8px;
+    opacity: 0.7;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.progress-step:not(:last-child):after {
+    content: '';
+    position: absolute;
+    top: 22px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background-color: #ddd;
+    z-index: 0;
+}
+
+.progress-step.active {
+    opacity: 1;
+}
+
+.progress-step.active .step-icon {
+    background-color: #ff6700;
+    color: white;
+}
+
+.progress-step.completed .step-icon {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.step-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #eee;
+    margin-bottom: 8px;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.step-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.plan-step-content {
+    margin-bottom: 24px;
+}
+
+.step-description {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.plan-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-info {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 16px;
+    color: #666;
+}
+
+.week-days-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.day-selector {
+    flex: 0 0 calc(14.28% - 8px);
+    position: relative;
+}
+
+.day-selector input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.day-selector label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 0;
+    background: #f5f5f5;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.day-selector input[type="checkbox"]:checked + label {
+    background: #fff0e6;
+    border-color: #ff6700;
+    color: #ff6700;
+}
+
+.day-abbr {
+    display: none;
+}
+
+.sessions-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.session-config {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.session-header {
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.session-header h4 {
+    margin: 0;
+}
+
+.step-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+}
+
+/* Estilos para tela de revisão */
+.plan-review {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.plan-summary {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.plan-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+}
+
+.meta-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.meta-value {
+    font-weight: 500;
+}
+
+.plan-weekly-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.weekly-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ff6700;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.weekly-schedule {
+    margin-bottom: 24px;
+}
+
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.review-session {
+    display: flex;
+    background: #f9f9f9;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.day-column {
+    background: #ff6700;
+    color: white;
+    padding: 12px;
+    min-width: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.session-details {
+    flex: 1;
+    padding: 12px 16px;
+}
+
+.session-main-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.workout-type {
+    font-weight: 500;
+}
+
+.workout-metrics {
+    color: #666;
+    font-size: 14px;
+}
+
+.session-secondary-info {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.session-notes {
+    font-size: 12px;
+    font-style: italic;
+    color: #666;
+    background: #f0f0f0;
+    padding: 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .day-selector {
+        flex: 0 0 calc(33.33% - 8px);
+    }
+    
+    .day-name {
+        display: none;
+    }
+    
+    .day-abbr {
+        display: block;
+    }
+    
+    .sessions-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .plan-weekly-stats {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
