@@ -10,59 +10,62 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/animations.css">
-    <link rel="stylesheet" href="./css/notification.css">
-    <link rel="stylesheet" href="./css/custom-inputs.css">
-    <!-- Adicionar CSS dos planos de treino -->
     <link rel="stylesheet" href="./css/training-plans.css">
-    
-    <!-- Chart.js para gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- Tela de carregamento -->
+    <div id="app-loading-screen" class="app-loading-screen">
+        <div class="loading-logo">LazzFit</div>
+        <div class="loading-spinner-container">
+            <div class="loading-spinner-outer"></div>
+            <div class="loading-spinner-inner"></div>
+        </div>
+        <div id="loading-status">Inicializando aplicação...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar"></div>
+        </div>
+    </div>
+    
+    <!-- Container principal -->
     <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <nav class="sidebar">
+        <div class="sidebar">
             <div class="logo-container">
-                <div class="logo">Lazz<span>Fit</span></div>
+                <div class="logo">LazzFit</div>
                 <div class="subtitle">Gerenciador de Treinos</div>
             </div>
-            
             <ul class="nav-links">
                 <li class="nav-item active" data-view="dashboard">
                     <span class="material-icons-round">dashboard</span>
-                    Dashboard
+                    <span>Dashboard</span>
                 </li>
                 <li class="nav-item" data-view="runs">
-                    <span class="material-icons-round">format_list_bulleted</span>
-                    Treinos
+                    <span class="material-icons-round">directions_run</span>
+                    <span>Treinos</span>
                 </li>
                 <li class="nav-item" data-view="add-run">
                     <span class="material-icons-round">add_circle</span>
-                    Novo Treino
+                    <span>Novo Treino</span>
                 </li>
                 <li class="nav-item" data-view="statistics">
                     <span class="material-icons-round">bar_chart</span>
-                    Estatísticas
+                    <span>Estatísticas</span>
                 </li>
                 <li class="nav-item" data-view="training-plans">
-                    <span class="material-icons-round">calendar_month</span>
-                    Planos de Treino
+                    <span class="material-icons-round">event_note</span>
+                    <span>Planos de Treino</span>
                 </li>
             </ul>
-            
             <div class="sidebar-footer">
                 <button id="exit-btn" class="exit-button">
                     <span class="material-icons-round">logout</span>
-                    Sair
+                    <span>Sair</span>
                 </button>
                 <div class="version">v1.0.0</div>
             </div>
-        </nav>
-        
-        <!-- Main Content Area -->
-        <main class="content">
+        </div>
+        <div class="content">
             <div id="view-container"></div>
-        </main>
+        </div>
     </div>
     
     <!-- Templates -->
@@ -587,14 +590,19 @@
         </div>
     </template>
 
-    <!-- JavaScript Dependencies -->
-    <!-- IMPORTANTE: Ordem correta dos scripts -->
+    <!-- Scripts de Dependências -->
     <script src="./js/api.js"></script>
     <script src="./js/formatters.js"></script>
     <script src="./js/components.js"></script>
     <script src="./js/charts.js"></script>
     
-    <!-- Scripts para planos de treino (adicionar na ordem correta) -->
+    <!-- Scripts do App Modularizado (ordem importante) -->
+    <script src="./js/app-core.js"></script>
+    <script src="./js/app-ui.js"></script>
+    <script src="./js/app-runs.js"></script>
+    <script src="./js/app-training-plans.js"></script>
+    
+    <!-- Scripts para planos de treino -->
     <script src="./js/training-plans.js"></script>
     <script src="./js/plan-days.js"></script>
     <script src="./js/plan-steps.js"></script>
@@ -602,7 +610,7 @@
     <script src="./js/plan-review.js"></script>
     <script src="./js/plan-view.js"></script>
     
-    <!-- Script principal (deve ser o último) -->
+    <!-- Script principal (inicialização) -->
     <script src="./js/main.js"></script>
 </body>
 </html>

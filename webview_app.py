@@ -338,6 +338,25 @@ class LazzFitAPI:
             print(f"❌ Erro ao excluir plano de treinamento {plan_id}: {e}")
             return False
 
+    def quit_app(self):
+        """Fecha o aplicativo de maneira limpa"""
+        try:
+            # Garantir que banco de dados seja fechado
+            if hasattr(self, 'db'):
+                self.db.ensure_connection_closed()
+            
+            # Registrar saída
+            print("Saída requisitada pelo usuário através da interface")
+            
+            # Interromper a thread principal do webview após 200ms
+            import threading
+            threading.Timer(0.2, lambda: webview.windows[0].destroy()).start()
+            
+            return True
+        except Exception as e:
+            print(f"Erro ao fechar aplicativo: {e}")
+            return False
+
 
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -406,6 +425,9 @@ def start_app():
             draggable=True
         )
 
+        # Configurar manipulador de evento de fechamento
+        window.events.closing += on_window_closing
+
         # Inicializar a janela do webview (sem debug para não abrir DevTools)
         webview.start(storage_path=get_storage_path())
         return True
@@ -425,6 +447,18 @@ def close_app():
     except Exception as e:
         print(f"Erro ao fechar app: {e}")
         traceback.print_exc()
+
+
+def on_window_closing():
+    """Função chamada quando a janela está sendo fechada"""
+    print("Evento de fechamento da janela acionado")
+    try:
+        # Fechar conexão do banco de dados
+        if 'global_api' in globals() and hasattr(global_api, 'db'):
+            global_api.db.ensure_connection_closed()
+            print("Conexão com banco de dados fechada no evento de fechamento da janela")
+    except Exception as e:
+        print(f"Erro durante o fechamento da janela: {e}")
 
 
 # Garantir que funções de limpeza sejam executadas ao sair

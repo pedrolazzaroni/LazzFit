@@ -1142,22 +1142,38 @@ class App {
         console.log("🔄 Tentando editar plano:", params);
         
         if (!params || !params.planId) {
-            console.warn("⚠️ ID do plano não fornecido para edição");
+            console.error("❌ ID do plano não fornecido para edição");
+            this.showNotification("ID do plano não fornecido", "error");
             this.navigate('training-plans');
             return;
         }
         
         try {
+            // Verificar se o módulo trainingPlans existe
             if (typeof trainingPlans === 'undefined' || !trainingPlans) {
-                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                console.error("❌ Módulo trainingPlans não encontrado");
                 this.showNotification("Módulo de planos de treino não disponível", "error");
-                this.navigate('training-plans');
                 return;
             }
             
-            trainingPlans.editPlan(parseInt(params.planId));
+            // Verificar se a função de edição existe
+            if (typeof trainingPlans.showEditPlanView !== 'function') {
+                console.error("❌ Função showEditPlanView não encontrada");
+                this.showNotification("Funcionalidade de edição de plano indisponível", "error");
+                return;
+            }
+            
+            // Verificar a disponibilidade da API
+            if (!window.pywebview || !window.pywebview.api) {
+                console.error("❌ API PyWebView não disponível");
+                this.showNotification("API backend não disponível. Verifique a conexão.", "error");
+                return;
+            }
+            
+            // Chamar a função de edição de plano
+            trainingPlans.showEditPlanView(parseInt(params.planId));
         } catch (error) {
-            console.error("❌ Erro ao editar plano:", error);
+            console.error("❌ Erro ao mostrar editor de plano:", error);
             this.showNotification("Erro ao carregar tela de edição do plano", "error");
             this.navigate('training-plans');
         }
@@ -1171,27 +1187,43 @@ class App {
         console.log("🔄 Tentando visualizar plano:", params);
         
         if (!params || !params.planId) {
-            console.warn("⚠️ ID do plano não fornecido para visualização");
+            console.error("❌ ID do plano não fornecido para visualização");
+            this.showNotification("ID do plano não fornecido", "error");
             this.navigate('training-plans');
             return;
         }
         
         try {
+            // Verificar se o módulo trainingPlans existe
             if (typeof trainingPlans === 'undefined' || !trainingPlans) {
-                console.error("❌ Módulo 'trainingPlans' não encontrado!");
+                console.error("❌ Módulo trainingPlans não encontrado");
                 this.showNotification("Módulo de planos de treino não disponível", "error");
-                this.navigate('training-plans');
                 return;
             }
             
-            trainingPlans.viewPlan(parseInt(params.planId));
+            // Verificar se a função de visualização existe
+            if (typeof trainingPlans.showViewPlanView !== 'function') {
+                console.error("❌ Função showViewPlanView não encontrada");
+                this.showNotification("Funcionalidade de visualização de plano indisponível", "error");
+                return;
+            }
+            
+            // Verificar a disponibilidade da API
+            if (!window.pywebview || !window.pywebview.api) {
+                console.error("❌ API PyWebView não disponível");
+                this.showNotification("API backend não disponível. Verifique a conexão.", "error");
+                return;
+            }
+            
+            // Chamar a função de visualização de plano
+            trainingPlans.showViewPlanView(parseInt(params.planId));
         } catch (error) {
-            console.error("❌ Erro ao visualizar plano:", error);
+            console.error("❌ Erro ao mostrar detalhes do plano:", error);
             this.showNotification("Erro ao carregar detalhes do plano", "error");
             this.navigate('training-plans');
         }
     }
-
+    
     /**
      * Show the training plans view
      */
@@ -1233,7 +1265,7 @@ class App {
             this.showNotification("Ocorreu um erro inesperado. Consulte o console para mais detalhes.", "error");
         }
     }
-
+    
     /**
      * Show the create plan view
      */
@@ -1257,7 +1289,7 @@ class App {
             this.navigate('training-plans');
         }
     }
-
+    
     /**
      * Helper method to dynamically load training plans module if not found
      * @private
@@ -1302,7 +1334,7 @@ class App {
             document.body.appendChild(script);
         });
     }
-
+    
     /**
      * Register a new view handler
      * @param {string} viewName - Name of the view
@@ -1313,7 +1345,7 @@ class App {
             this.viewHandlers[viewName] = handler;
         }
     }
-
+    
     // Atualiza o status de carregamento na tela inicial
     updateLoadingStatus(message, progress) {
         const statusElement = document.querySelector('.loading-status');
@@ -1327,11 +1359,10 @@ class App {
             progressBar.style.width = `${progress}%`;
         }
     }
-
+    
     // Esconde a tela de carregamento com uma animação suave
     hideLoadingScreen() {
         const loadingScreen = document.getElementById('app-loading-screen');
-        
         if (loadingScreen) {
             loadingScreen.style.opacity = "0";
             setTimeout(() => {
@@ -1341,60 +1372,43 @@ class App {
     }
 }
 
+/**
+ * Main Application Module
+ * Handles startup and global initialization
+ */
+
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🌐 DOM carregado, inicializando aplicação...");
     
     try {
         // Criar a instância do app e torná-la global
-        window.app = new App();
+        window.app = new AppClass();
         
         // Configurar manipuladores de erro não tratados
         window.addEventListener('error', (event) => {
-            console.error("❌ Erro não tratado:", event.error);
-            if (window.app) {
-                window.app.showNotification("Ocorreu um erro inesperado. Consulte o console para mais detalhes.", "error");
+            console.error("❌ Erro global não tratado:", event.error);
+            if (app && typeof app.showNotification === 'function') {
+                app.showNotification("Ocorreu um erro inesperado. Consulte o console para mais detalhes.", "error");
             }
         });
         
         // Aguardar API inicializada
         console.log("🔍 Verificando status da API...");
-        
         const waitForAPI = () => {
-            if (api && api.initialized) {
-                console.log("✅ API inicializada, prosseguindo...");
-                window.app.init();
+            if (window.api) {
+                console.log("✓ API detectada, inicializando aplicação");
+                app.init();
             } else {
-                console.log("⏳ API ainda não inicializada, aguardando...");
-                setTimeout(waitForAPI, 300);
+                console.log("⏳ Aguardando API...");
+                setTimeout(waitForAPI, 100);
             }
         };
         
-        // Tentativa inicial de verificação da API
         waitForAPI();
-    
-        // Configurar botão de saída
-        const exitBtn = document.getElementById('exit-btn');
-        if (exitBtn) {
-            exitBtn.addEventListener('click', async () => {
-                try {
-                    if (window.app) {
-                        window.app.showNotification('Finalizando aplicativo...', 'info');
-                    }
-                    
-                    setTimeout(async () => {
-                        if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
-                            await window.pywebview.api.exit_app();
-                        }
-                    }, 500);
-                } catch (error) {
-                    console.error('❌ Erro ao fechar aplicativo:', error);
-                }
-            });
-        }
     } catch (error) {
-        console.error("❌ ERRO CRÍTICO NA INICIALIZAÇÃO:", error);
-        alert("Erro crítico ao inicializar a aplicação. Verifique o console para detalhes.");
+        console.error("❌ Erro crítico durante inicialização:", error);
+        alert("Erro fatal: " + error.message);
     }
 });
 
@@ -1406,19 +1420,16 @@ window.addEventListener('load', () => {
     if (typeof trainingPlans === 'undefined') {
         console.warn("⚠️ Módulo trainingPlans não detectado no carregamento completo");
         
-        // Tentar carregar o módulo training-plans.js dinamicamente
+        // Tenta carregar o módulo training-plans.js dinamicamente
         const script = document.createElement('script');
         script.src = './js/training-plans.js';
         script.onload = () => {
-            console.log("✅ Módulo training-plans.js carregado dinamicamente");
-            if (window.app && window.app.initialized && window.app.currentView === 'training-plans') {
-                window.app.navigate('training-plans');
+            console.log("✓ Módulo trainingPlans carregado dinamicamente");
+            if (trainingPlans && app.initialized && window.app.currentView === 'training-plans') {
+                app.navigate('training-plans');
             }
         };
-        script.onerror = () => {
-            console.error("❌ Falha ao carregar o módulo training-plans.js dinamicamente");
-        };
-        document.head.appendChild(script);
+        document.body.appendChild(script);
     }
 });
 
@@ -1426,28 +1437,32 @@ window.addEventListener('load', () => {
 document.addEventListener('DOMContentLoaded', function() {
     const exitBtn = document.getElementById('exit-btn');
     if (exitBtn) {
-        exitBtn.addEventListener('click', function() {
-            // Mostrar confirmação antes de sair
-            components.showConfirmation(
-                'Confirmar Saída',
-                'Tem certeza que deseja sair do aplicativo?',
-                async function() {
-                    try {
-                        if (window.pywebview) {
-                            await window.pywebview.api.close_app();
-                        } else {
-                            console.log('Saindo do aplicativo (simulação)');
-                            window.close();
+        exitBtn.addEventListener('click', async () => {
+            try {
+                // Mostrar confirmação antes de sair
+                components.showConfirmation(
+                    'Sair do aplicativo',
+                    'Tem certeza que deseja sair do aplicativo?',
+                    async function() {
+                        try {
+                            if (window.pywebview && window.pywebview.api) {
+                                await window.pywebview.api.quit_app();
+                            } else {
+                                console.log('Saindo do aplicativo (simulação)');
+                                window.close();
+                            }
+                        } catch (error) {
+                            console.error('Erro ao fechar aplicativo:', error);
+                            app.showNotification('Não foi possível fechar o aplicativo', 'error');
                         }
-                    } catch (error) {
-                        console.error('Erro ao fechar aplicativo:', error);
-                        app.showNotification('Não foi possível fechar o aplicativo', 'error');
+                    },
+                    function() {
+                        // Cancelado, não fazer nada
                     }
-                },
-                function() {
-                    // Cancelado, não fazer nada
-                }
-            );
+                );
+            } catch (error) {
+                console.error('Erro ao exibir diálogo de confirmação:', error);
+            }
         });
     }
 });

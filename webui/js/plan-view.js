@@ -12,37 +12,33 @@ trainingPlans.showViewPlanView = async function(planId) {
         app.showLoading();
         
         // Buscar dados do plano
-        let planData;
-        if (api.isPyWebView) {
-            planData = await window.pywebview.api.get_training_plan(planId);
-        } else {
-            // Usar dados mock para desenvolvimento
-            const mockPlan = this.plans.find(p => p.id === planId);
-            planData = {
-                id: mockPlan.id,
-                name: mockPlan.name,
-                goal: mockPlan.goal,
-                duration_weeks: mockPlan.duration_weeks,
-                level: mockPlan.level,
-                notes: "Notas de exemplo para este plano.",
-                created_at: mockPlan.created_at,
-                updated_at: mockPlan.updated_at,
-                weeks: this._generateMockWeeks(mockPlan.duration_weeks)
-            };
-            
-            // Simular delay de rede
-            await new Promise(r => setTimeout(r, 500));
-        }
+        let planData = null;
         
-        if (!planData) {
-            throw new Error("Plano não encontrado");
+        // Verificação mais robusta da API PyWebView
+        if (window.pywebview && window.pywebview.api) {
+            try {
+                console.log("Buscando plano via API PyWebView");
+                planData = await window.pywebview.api.get_training_plan(planId);
+                
+                if (!planData) {
+                    throw new Error("Plano não encontrado na base de dados");
+                }
+                
+                console.log("Dados do plano recebidos com sucesso");
+            } catch (apiError) {
+                console.error("Erro na API ao buscar plano:", apiError);
+                throw new Error("Falha na comunicação com a API: " + (apiError.message || "Erro desconhecido"));
+            }
+        } else {
+            console.error("API PyWebView não disponível");
+            throw new Error("API de backend não disponível");
         }
         
         // Renderizar visualização do plano
         this._renderPlanView(planData);
     } catch (error) {
         console.error("Erro ao visualizar plano:", error);
-        app.showNotification("Não foi possível carregar o plano de treino.", "error");
+        app.showNotification("Não foi possível carregar o plano de treino: " + (error.message || "Erro desconhecido"), "error");
         app.navigate('training-plans');
     } finally {
         app.hideLoading();
@@ -63,10 +59,14 @@ trainingPlans._generateMockWeeks = function(duration_weeks) {
                 sessions.push({
                     id: `week${week}-day${day}`,
                     day_of_week: day,
-                    workout_type: this._getDefaultWorkoutType(day),
-                    distance: this._getDefaultDistance(day),
-                    duration: this._getDefaultDuration(day),
-                    intensity: this._getDefaultIntensity(day),
+                    workout_type: this._getDefaultWorkoutType ? 
+                        this._getDefaultWorkoutType(day) : "Corrida Regular",
+                    distance: this._getDefaultDistance ? 
+                        this._getDefaultDistance(day) : 5.0,
+                    duration: this._getDefaultDuration ? 
+                        this._getDefaultDuration(day) : 30,
+                    intensity: this._getDefaultIntensity ? 
+                        this._getDefaultIntensity(day) : "Moderada",
                     pace_target: "5:30",
                     hr_zone: "Zona 2-3",
                     details: "Descrição de exemplo para esta sessão de treino."
@@ -89,11 +89,22 @@ trainingPlans._generateMockWeeks = function(duration_weeks) {
 
 // Renderizar visualização de plano
 trainingPlans._renderPlanView = function(plan) {
+    // Verificação de segurança para dados do plano
+    if (!plan || typeof plan !== 'object') {
+        console.error("Dados do plano inválidos:", plan);
+        app.showNotification("Dados do plano inválidos ou corrompidos", "error");
+        app.navigate('training-plans');
+        return;
+    }
+    
+    // Limpar o container antes de adicionar o novo conteúdo
+    app.viewContainer.innerHTML = '';
+    
     // Preparar o conteúdo da view
     const viewHTML = `
         <div class="plan-view">
             <div class="section-header">
-                <h2>${plan.name}</h2>
+                <h2>${plan.name || "Plano de Treino"}</h2>
                 <div class="action-buttons">
                     <button id="back-to-plans-btn" class="btn">
                         <span class="material-icons-round">arrow_back</span>
@@ -116,11 +127,11 @@ trainingPlans._renderPlanView = function(plan) {
             <div class="plan-details">
                 <div class="plan-stat">
                     <span class="material-icons-round">fitness_center</span>
-                    <span>Nível: ${plan.level}</span>
+                    <span>Nível: ${plan.level || "Não especificado"}</span>
                 </div>
                 <div class="plan-stat">
                     <span class="material-icons-round">event</span>
-                    <span>Duração: ${plan.duration_weeks} semanas</span>
+                    <span>Duração: ${plan.duration_weeks || "?"} semanas</span>
                 </div>
                 <div class="plan-stat">
                     <span class="material-icons-round">flag</span>
@@ -140,7 +151,7 @@ trainingPlans._renderPlanView = function(plan) {
             <div class="training-weeks-container">
                 <h3>Agenda de Treinos</h3>
                 <div class="accordion">
-                    ${this._renderWeeksAccordion(plan.weeks)}
+                    ${this._renderWeeksAccordion(plan.weeks || [])}
                 </div>
             </div>
         </div>
@@ -189,15 +200,19 @@ trainingPlans._renderPlanView = function(plan) {
 
 // Renderizar acordeão para semanas de treino
 trainingPlans._renderWeeksAccordion = function(weeks) {
+    if (!weeks || weeks.length === 0) {
+        return `<div class="empty-state">Não há semanas de treino definidas neste plano.</div>`;
+    }
+    
     return weeks.map(week => `
         <div class="accordion-item">
             <div class="accordion-header">
                 <div class="accordion-title">
-                    <span class="week-number">Semana ${week.week_number}</span>
-                    <span class="week-focus">${week.focus}</span>
+                    <span class="week-number">Semana ${week.week_number || "?"}</span>
+                    <span class="week-focus">${week.focus || ""}</span>
                 </div>
                 <div class="accordion-summary">
-                    <span class="week-distance">${week.total_distance} km</span>
+                    <span class="week-distance">${week.total_distance || 0} km</span>
                     <button class="accordion-toggle">
                         <span class="material-icons-round">expand_more</span>
                     </button>
@@ -205,7 +220,7 @@ trainingPlans._renderWeeksAccordion = function(weeks) {
             </div>
             <div class="accordion-content">
                 <div class="week-training-grid">
-                    ${this._renderWeekDays(week.sessions)}
+                    ${this._renderWeekDays(week.sessions || [])}
                 </div>
                 <div class="week-notes">
                     <h4>Notas da Semana</h4>
@@ -243,12 +258,13 @@ trainingPlans._renderWeekDays = function(sessions) {
 
 // Renderizar sessão de treino
 trainingPlans._renderTrainingSession = function(session) {
+    const intensity = (session.intensity || "").toLowerCase();
     return `
-        <div class="training-session" data-intensity="${session.intensity.toLowerCase()}">
-            <div class="session-type">${session.workout_type}</div>
+        <div class="training-session" data-intensity="${intensity}">
+            <div class="session-type">${session.workout_type || "Treino"}</div>
             <div class="session-details">
-                <p>${session.distance} km | ${session.duration} min</p>
-                <p>Intensidade: ${session.intensity}</p>
+                <p>${session.distance || 0} km | ${session.duration || 0} min</p>
+                <p>Intensidade: ${session.intensity || "N/A"}</p>
                 ${session.pace_target ? `<p>Ritmo: ${session.pace_target} min/km</p>` : ''}
                 ${session.hr_zone ? `<p>Zona FC: ${session.hr_zone}</p>` : ''}
             </div>
@@ -280,7 +296,7 @@ trainingPlans._exportPlanToExcel = async function(plan) {
         
         let result = false;
         
-        if (api.isPyWebView) {
+        if (api && api.isPyWebView) {
             // Exportar via API
             result = await window.pywebview.api.export_training_plan_to_xlsx(plan.id);
         } else {
@@ -319,6 +335,7 @@ trainingPlans._formatDate = function(dateString) {
     
     try {
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString; // Se não for data válida
         return date.toLocaleDateString('pt-BR');
     } catch (e) {
         return dateString;
@@ -326,7 +343,45 @@ trainingPlans._formatDate = function(dateString) {
 };
 
 // Função para editar plano de treino
-trainingPlans.showEditPlanView = function(planId) {
-    app.showNotification("Funcionalidade em desenvolvimento. Em breve você poderá editar seus planos!", "info");
-    app.navigate('view-plan', { planId });
+trainingPlans.showEditPlanView = async function(planId) {
+    try {
+        console.log("Carregando plano para edição:", planId);
+        app.showLoading();
+        
+        // Primeiro, verificar se temos os dados do plano
+        let planData = null;
+        
+        // Verificação robusta da API PyWebView
+        if (window.pywebview && window.pywebview.api) {
+            try {
+                planData = await window.pywebview.api.get_training_plan(planId);
+            } catch (apiError) {
+                console.error("Erro ao buscar plano para edição:", apiError);
+                throw new Error("Não foi possível obter os dados do plano para edição");
+            }
+        } else {
+            throw new Error("API de backend não disponível");
+        }
+        
+        if (!planData) {
+            throw new Error("Plano não encontrado");
+        }
+        
+        // Por enquanto, como a funcionalidade de edição está em desenvolvimento,
+        // apenas mostrar uma notificação e redirecionar para visualização
+        app.showNotification("Funcionalidade de edição em desenvolvimento. Em breve você poderá editar seus planos!", "info");
+        
+        // Esconder loading antes do redirecionamento
+        app.hideLoading();
+        
+        // Redirecionar para visualizar o plano após mostrar a mensagem
+        setTimeout(() => {
+            app.navigate('view-plan', { planId });
+        }, 1000);
+    } catch (error) {
+        console.error("Erro ao tentar editar plano:", error);
+        app.showNotification("Erro ao carregar tela de edição do plano: " + (error.message || "Erro desconhecido"), "error");
+        app.hideLoading();
+        app.navigate('training-plans');
+    }
 };

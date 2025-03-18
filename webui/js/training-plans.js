@@ -26,19 +26,35 @@ const trainingPlans = {
         
         try {
             // Buscar todos os planos existentes
-            if (api && typeof api.getAllTrainingPlans === 'function') {
-                this.plans = await api.getAllTrainingPlans();
-            } else if (window.pywebview && window.pywebview.api) {
-                this.plans = await window.pywebview.api.get_all_training_plans();
+            app.showLoading();
+            
+            let plansData = [];
+            
+            // Verificação robusta da API
+            if (window.pywebview && window.pywebview.api) {
+                console.log("Buscando planos via API PyWebView");
+                try {
+                    plansData = await window.pywebview.api.get_all_training_plans();
+                    console.log(`Recebidos ${plansData.length} planos de treino`);
+                } catch (apiError) {
+                    console.error("Erro ao buscar planos via API:", apiError);
+                    throw new Error("Falha na comunicação com a API");
+                }
             } else {
-                console.warn("API não encontrada, usando dados de exemplo");
-                this.plans = this._getMockPlans();
+                console.error("API PyWebView não disponível");
+                throw new Error("API de backend não disponível");
             }
             
+            this.plans = plansData || [];
             this.renderTrainingPlans();
         } catch (error) {
             console.error("Erro ao carregar planos de treino:", error);
-            app.showNotification("Não foi possível carregar os planos de treino.", "error");
+            app.showNotification("Não foi possível carregar os planos de treino: " + (error.message || "Erro desconhecido"), "error");
+            // Garantir que temos um array vazio se houver erro
+            this.plans = [];
+            this.renderTrainingPlans();
+        } finally {
+            app.hideLoading();
         }
     },
     
@@ -139,15 +155,18 @@ const trainingPlans = {
         `;
         
         // Adicionar event listeners
-        card.querySelector('.view-btn').addEventListener('click', () => {
+        card.querySelector('.view-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevenir propagação do evento
             app.navigate('view-plan', { planId: plan.id });
         });
         
-        card.querySelector('.edit-btn').addEventListener('click', () => {
+        card.querySelector('.edit-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevenir propagação do evento
             app.navigate('edit-plan', { planId: plan.id });
         });
         
-        card.querySelector('.delete-btn').addEventListener('click', () => {
+        card.querySelector('.delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevenir propagação do evento
             this.confirmDeletePlan(plan.id);
         });
         

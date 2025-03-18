@@ -585,8 +585,6 @@ const api = {
 // Exportar a API para uso global
 window.api = api;
 
-// ...existing code...
-
 /**
  * Obter todos os planos de treino
  * @returns {Promise<Array>} Lista de planos de treino
@@ -607,4 +605,23 @@ api.getAllTrainingPlans = async function() {
     }
 };
 
-// ...existing code...
+/**
+ * Obter detalhes de um plano de treino específico
+ * @param {number} planId - ID do plano
+ * @returns {Promise<Object|null>} Detalhes do plano ou null se não encontrado
+ */
+api.getTrainingPlan = async function(planId) {
+    if (this.isPyWebView && window.pywebview && window.pywebview.api) {
+        try {
+            console.log(`API: Solicitando plano ${planId} ao backend`);
+            const result = await window.pywebview.api.get_training_plan(planId);
+            console.log(`API: Plano ${planId} recebido:`, result);
+            return result;
+        } catch (error) {
+            console.error(`API: Erro ao obter plano ${planId}:`, error);
+            throw new Error(`Falha ao obter plano #${planId}: ${error.message || "Erro desconhecido"}`);
+        }
+    } else {
+        throw new Error("API não disponível no ambiente atual");
+    }
+};
