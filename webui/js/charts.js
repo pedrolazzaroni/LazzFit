@@ -1,777 +1,743 @@
 /**
  * Charts Module
- * Provides methods for creating and updating charts using Chart.js
+ * Handles creation of charts for app statistics
  */
-class ChartManager {
-    constructor() {
-        this.charts = {};
-        this.themeColors = {
-            primary: '#FF6700',
-            primaryLight: '#FF8533',
-            primaryDark: '#CC5200',
-            gray: '#888888',
-            lightGray: '#DDDDDD',
-            chartGrid: '#444444'
-        };
-        
-        // Set global Chart.js defaults
-        Chart.defaults.color = '#FFFFFF';
-        Chart.defaults.font.family = "'Roboto', 'Segoe UI', Arial, sans-serif";
-        
-        // Custom gradient for area charts
-        this.gradientOptions = {
-            backgroundColor: context => {
-                if (!context.chart.chartArea) return 'rgba(255, 103, 0, 0.5)';
-                
-                const chartArea = context.chart.chartArea;
-                const gradient = context.chart.ctx.createLinearGradient(
-                    0, chartArea.bottom, 0, chartArea.top
-                );
-                
-                gradient.addColorStop(0, 'rgba(255, 103, 0, 0.1)');
-                gradient.addColorStop(1, 'rgba(255, 103, 0, 0.6)');
-                
-                return gradient;
-            }
-        };
-    }
-
+const charts = {
+    // Armazenar instâncias de gráficos para destruição/recriação
+    charts: {},
+    
     /**
-     * Create a dashboard recent runs chart
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
+     * Verificar se Chart.js está disponível e carregar se necessário
+     * @param {Function} callback - Função a ser chamada quando disponível
      */
-    createRecentRunsChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        
-        // Extract the last 10 entries and reverse for chronological order
-        const recentRuns = data.slice(0, 10).reverse();
-        
-        // Extract data points
-        const labels = recentRuns.map(run => run.date);
-        const distances = recentRuns.map(run => run.distance);
-        
-        // Create the chart
-        this.charts.recentRuns = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Distância (km)',
-                    data: distances,
-                    backgroundColor: this.themeColors.primary,
-                    borderColor: this.themeColors.primary,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const run = recentRuns[context.dataIndex];
-                                return [
-                                    `Distância: ${run.distance.toFixed(2)} km`,
-                                    `Duração: ${this._formatDuration(run.duration)}`,
-                                    `Ritmo: ${run.avg_pace} min/km`
-                                ];
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        ticks: {
-                            callback: (value) => `${value} km`
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Create distance chart for statistics view
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
-     */
-    createDistanceChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        
-        // Extract data points
-        const labels = data.map((_, index) => `Treino ${index + 1}`);
-        const distances = data.map(run => run.distance);
-        
-        // Create the chart
-        this.charts.distance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Distância (km)',
-                    data: distances,
-                    backgroundColor: this.themeColors.primary,
-                    borderColor: this.themeColors.primaryDark,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Distância por Treino',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: (context) => {
-                                const index = context[0].dataIndex;
-                                return `Treino ${index + 1} (${data[index].date})`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        title: {
-                            display: true,
-                            text: 'Distância (km)'
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Add trend line if we have enough data
-        if (distances.length >= 3) {
-            this._addTrendline(this.charts.distance, distances);
-        }
-    }
-
-    /**
-     * Create duration chart for statistics view
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
-     */
-    createDurationChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        
-        // Extract data points
-        const labels = data.map((_, index) => `Treino ${index + 1}`);
-        const durations = data.map(run => run.duration);
-        
-        // Create the chart
-        this.charts.duration = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Duração (min)',
-                    data: durations,
-                    borderColor: this.themeColors.primary,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointBackgroundColor: this.themeColors.primaryLight,
-                    pointBorderColor: this.themeColors.primaryDark,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Duração por Treino',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: (context) => {
-                                const index = context[0].dataIndex;
-                                return `Treino ${index + 1} (${data[index].date})`;
-                            },
-                            label: (context) => {
-                                const duration = context.raw;
-                                return `${this._formatDuration(duration)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        title: {
-                            display: true,
-                            text: 'Duração (min)'
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Create pace chart for statistics view
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
-     */
-    createPaceChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return;
-        
-        const canvas = ctx.getContext('2d');
-        
-        // Garantir que o canvas tem as dimensões corretas
-        canvas.canvas.width = canvas.canvas.offsetWidth;
-        canvas.canvas.height = canvas.canvas.offsetHeight;
-        
-        // Destruir o gráfico anterior se existir
-        if (this.charts.pace) {
-            this.charts.pace.destroy();
+    ensureChartJsAvailable: function(callback) {
+        if (typeof Chart !== 'undefined') {
+            callback();
+            return;
         }
         
-        // Extract and convert pace data (use most recent 20 runs for better visualization)
-        const recentRuns = [...data].slice(-20);
-        const labels = recentRuns.map(run => run.date);
+        console.log("Chart.js não disponível, tentando carregar dinamicamente...");
         
-        // Convert pace strings like "5:30" to decimal minutes (5.5)
-        const paces = recentRuns.map(run => {
-            const parts = run.avg_pace.split(':');
-            if (parts.length !== 2) return 0;
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+        script.onload = callback;
+        script.onerror = () => {
+            console.error("Erro ao carregar Chart.js dinamicamente");
+            if (window.app) {
+                app.showNotification("Não foi possível carregar a biblioteca de gráficos", "error");
+            }
+        };
+        document.head.appendChild(script);
+    },
+    
+    /**
+     * Create recent runs chart for dashboard
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
+     */
+    createRecentRunsChart: function(elementId, runs) {
+        try {
+            console.log("Criando gráfico de corridas recentes");
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error("Container de gráficos não encontrado:", elementId);
+                return;
+            }
             
-            const minutes = parseInt(parts[0], 10) || 0;
-            const seconds = parseInt(parts[1], 10) || 0;
-            return minutes + seconds / 60; // Convert to decimal minutes
-        });
-        
-        // Filtrar valores inválidos
-        const validPaces = paces.filter(pace => !isNaN(pace) && pace > 0);
-        
-        if (validPaces.length === 0) {
-            this._renderNoDataMessage(canvas, 'Sem dados de ritmo disponíveis');
-            return;
-        }
-        
-        // Calcular limites para escala Y
-        const minPace = Math.max(0, Math.min(...validPaces) * 0.9); // 10% abaixo do mínimo, mas não menos que 0
-        const maxPace = Math.max(...validPaces) * 1.1; // 10% acima do máximo
-        
-        // Create the chart
-        this.charts.pace = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Ritmo (min/km)',
-                    data: paces,
-                    borderColor: this.themeColors.primary,
-                    backgroundColor: ctx => {
-                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-                        gradient.addColorStop(0, 'rgba(255, 103, 0, 0.3)');
-                        gradient.addColorStop(1, 'rgba(255, 103, 0, 0)');
-                        return gradient;
-                    },
-                    borderWidth: 3,
-                    tension: 0.3,
-                    pointBackgroundColor: this.themeColors.primaryLight,
-                    pointBorderColor: this.themeColors.primaryDark,
-                    pointRadius: 5,
-                    pointHoverRadius: 8,
-                    fill: true
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Evolução do Ritmo',
-                        font: {
-                            size: 18,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            top: 20,
-                            bottom: 10
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: (context) => {
-                                const index = context[0].dataIndex;
-                                return recentRuns[index].date;
-                            },
-                            label: (context) => {
-                                const pace = context.raw;
-                                const minutes = Math.floor(pace);
-                                const seconds = Math.round((pace - minutes) * 60);
-                                return `Ritmo: ${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
-                            },
-                            afterLabel: (context) => {
-                                const index = context.dataIndex;
-                                const run = recentRuns[index];
-                                return [
-                                    `Distância: ${run.distance.toFixed(2)} km`,
-                                    `Duração: ${this._formatDuration(run.duration)}`
-                                ];
-                            }
-                        }
-                    },
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: (context) => context.tick.major ? this.themeColors.chartGrid : 'rgba(68, 68, 68, 0.5)',
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        ticks: {
-                            maxTicksLimit: 10,
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                    y: {
-                        reverse: true, // Lower is better for pace
-                        min: minPace,
-                        max: maxPace,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        ticks: {
-                            callback: value => {
-                                const minutes = Math.floor(value);
-                                const seconds = Math.round((value - minutes) * 60);
-                                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                            }
-                        }
-                    }
+            // Limitar a 7 corridas mais recentes
+            const recentRuns = runs.slice(-7);
+            
+            // Preparar dados para o gráfico
+            const labels = recentRuns.map(run => {
+                // Formatar data como "dd/mm"
+                const date = new Date(run.date);
+                return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+            });
+            
+            const distances = recentRuns.map(run => parseFloat(run.distance || 0));
+            const durations = recentRuns.map(run => parseInt(run.duration || 0) / 60); // Converter para horas
+            
+            this.ensureChartJsAvailable(() => {
+                // Destruir gráfico existente se houver
+                if (this.charts.recentRuns) {
+                    this.charts.recentRuns.destroy();
                 }
-            }
-        });
-        
-        // Add trend line if we have enough data
-        if (validPaces.length >= 3) {
-            this._addTrendline(this.charts.pace, paces, true); // true indicates this is a pace chart
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.recentRuns = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Distância (km)',
+                            data: distances,
+                            backgroundColor: 'rgba(255, 133, 51, 0.7)',
+                            borderColor: 'rgb(255, 133, 51)',
+                            borderWidth: 1,
+                            order: 1,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Tempo (h)',
+                            data: durations,
+                            type: 'line',
+                            fill: false,
+                            backgroundColor: 'rgba(51, 153, 255, 0.7)',
+                            borderColor: 'rgb(51, 153, 255)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            order: 0,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distância (km)'
+                                }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                position: 'right',
+                                grid: {
+                                    drawOnChartArea: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Tempo (h)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Treinos Recentes'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.datasetIndex === 0) {
+                                            label += context.parsed.y.toFixed(2) + ' km';
+                                        } else {
+                                            const hours = Math.floor(context.parsed.y);
+                                            const minutes = Math.round((context.parsed.y - hours) * 60);
+                                            label += `${hours}h ${minutes}min`;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                console.log("Gráfico criado com sucesso");
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico de corridas recentes:", error);
         }
-    }
-
+    },
+    
     /**
-     * Create heart rate or elevation chart for statistics view
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
+     * Create distance chart
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
      */
-    createCardioChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return;
-        
-        const canvas = ctx.getContext('2d');
-        
-        // Garantir que o canvas tem as dimensões corretas
-        canvas.canvas.width = canvas.canvas.offsetWidth;
-        canvas.canvas.height = canvas.canvas.offsetHeight;
-        
-        // Destruir o gráfico anterior se existir
-        if (this.charts.cardio) {
-            this.charts.cardio.destroy();
-        }
-        
-        // Extract data (use most recent 20 runs for better visualization)
-        const recentRuns = [...data].slice(-20);
-        const labels = recentRuns.map(run => run.date);
-        
-        // Try BPM data first
-        let chartType = 'bpm';
-        let chartData = recentRuns.map(run => run.avg_bpm).map(Number);
-        
-        // If no BPM data, try elevation data
-        if (chartData.filter(val => !isNaN(val) && val > 0).length === 0) {
-            chartType = 'elevation';
-            chartData = recentRuns.map(run => run.elevation_gain).map(Number);
-        }
-        
-        // Filter out invalid values
-        chartData = chartData.map((val, i) => {
-            // Replace NaN with null to create gaps in the chart
-            return isNaN(val) || val <= 0 ? null : val;
-        });
-        
-        // Check if we have any valid data
-        const hasValidData = chartData.some(val => val !== null);
-        
-        if (!hasValidData) {
-            this._renderNoDataMessage(canvas, 'Sem dados de BPM ou Elevação disponíveis');
-            return;
-        }
-        
-        const title = chartType === 'bpm' ? 'Frequência Cardíaca Média' : 'Elevação por Treino';
-        const yAxisLabel = chartType === 'bpm' ? 'BPM' : 'Elevação (m)';
-        const color = chartType === 'bpm' ? '#FF9966' : '#FF8533';
-        
-        // Create the chart
-        this.charts.cardio = new Chart(ctx, {
-            type: chartType === 'bpm' ? 'line' : 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: yAxisLabel,
-                    data: chartData,
-                    backgroundColor: chartType === 'bpm' ? 
-                        ctx => {
-                            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-                            gradient.addColorStop(0, 'rgba(255, 153, 102, 0.3)');
-                            gradient.addColorStop(1, 'rgba(255, 153, 102, 0)');
-                            return gradient;
-                        } : color,
-                    borderColor: color,
-                    borderWidth: chartType === 'bpm' ? 3 : 1,
-                    tension: 0.3,
-                    pointBackgroundColor: color,
-                    pointBorderColor: '#FF7733',
-                    pointRadius: 4,
-                    pointHoverRadius: 7,
-                    fill: chartType === 'bpm',
-                    spanGaps: true // Connect lines over null values
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: title,
-                        font: {
-                            size: 18,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            top: 20,
-                            bottom: 10
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: (context) => {
-                                const index = context[0].dataIndex;
-                                return recentRuns[index].date;
-                            },
-                            afterLabel: (context) => {
-                                const index = context.dataIndex;
-                                const run = recentRuns[index];
-                                return [
-                                    `Distância: ${run.distance.toFixed(2)} km`,
-                                    `Duração: ${this._formatDuration(run.duration)}`
-                                ];
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: (context) => context.tick.major ? this.themeColors.chartGrid : 'rgba(68, 68, 68, 0.5)',
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        ticks: {
-                            maxTicksLimit: 10,
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        }
-                    }
+    createDistanceChart: function(elementId, runs) {
+        try {
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error(`Container de gráficos não encontrado: ${elementId}`);
+                return;
+            }
+            
+            this.ensureChartJsAvailable(() => {
+                // Preparar dados para o gráfico
+                const sortedRuns = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const labels = sortedRuns.map(run => {
+                    const date = new Date(run.date);
+                    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                });
+                
+                const distances = sortedRuns.map(run => parseFloat(run.distance || 0));
+                
+                // Calcular tendência linear
+                const trend = this._calculateTrendLine(distances);
+                const trendData = distances.map((_, i) => trend.slope * i + trend.intercept);
+                
+                // Destruir gráfico existente se houver
+                if (this.charts.distance) {
+                    this.charts.distance.destroy();
                 }
-            }
-        });
-        
-        // Add trend line for BPM data if we have enough valid points
-        if (chartType === 'bpm') {
-            const validData = chartData.filter(val => val !== null);
-            if (validData.length >= 3) {
-                this._addTrendline(this.charts.cardio, chartData);
-            }
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.distance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Distância (km)',
+                            data: distances,
+                            backgroundColor: 'rgba(255, 133, 51, 0.1)',
+                            borderColor: 'rgb(255, 133, 51)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'Tendência',
+                            data: trendData,
+                            borderColor: 'rgba(153, 153, 153, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distância (km)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Data'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Evolução da Distância'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            return `Distância: ${context.parsed.y.toFixed(2)} km`;
+                                        }
+                                        return `Tendência: ${context.parsed.y.toFixed(2)} km`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico de distância:", error);
         }
-    }
-
+    },
+    
+    /**
+     * Create duration chart
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
+     */
+    createDurationChart: function(elementId, runs) {
+        try {
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error(`Container de gráficos não encontrado: ${elementId}`);
+                return;
+            }
+            
+            this.ensureChartJsAvailable(() => {
+                // Preparar dados para o gráfico
+                const sortedRuns = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const labels = sortedRuns.map(run => {
+                    const date = new Date(run.date);
+                    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                });
+                
+                const durations = sortedRuns.map(run => parseInt(run.duration || 0));
+                
+                // Calcular tendência linear
+                const trend = this._calculateTrendLine(durations);
+                const trendData = durations.map((_, i) => trend.slope * i + trend.intercept);
+                
+                // Destruir gráfico existente se houver
+                if (this.charts.duration) {
+                    this.charts.duration.destroy();
+                }
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.duration = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Duração (min)',
+                            data: durations,
+                            backgroundColor: 'rgba(51, 153, 255, 0.1)',
+                            borderColor: 'rgb(51, 153, 255)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'Tendência',
+                            data: trendData,
+                            borderColor: 'rgba(153, 153, 153, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Duração (min)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Data'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Evolução da Duração'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            const minutes = context.parsed.y;
+                                            const hours = Math.floor(minutes / 60);
+                                            const mins = minutes % 60;
+                                            if (hours > 0) {
+                                                return `Duração: ${hours}h ${mins}min`;
+                                            } else {
+                                                return `Duração: ${mins}min`;
+                                            }
+                                        }
+                                        return `Tendência: ${context.parsed.y.toFixed(0)} min`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico de duração:", error);
+        }
+    },
+    
+    /**
+     * Create pace chart
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
+     */
+    createPaceChart: function(elementId, runs) {
+        try {
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error(`Container de gráficos não encontrado: ${elementId}`);
+                return;
+            }
+            
+            this.ensureChartJsAvailable(() => {
+                // Preparar dados para o gráfico
+                const sortedRuns = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const labels = sortedRuns.map(run => {
+                    const date = new Date(run.date);
+                    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                });
+                
+                // Calcular ritmo para cada corrida (em segundos/km)
+                const paceData = sortedRuns.map(run => {
+                    if (!run.distance || run.distance <= 0) return null;
+                    return (run.duration * 60) / run.distance;
+                }).filter(pace => pace !== null);
+                
+                // Calcular tendência linear
+                const trend = this._calculateTrendLine(paceData);
+                const trendData = paceData.map((_, i) => trend.slope * i + trend.intercept);
+                
+                // Destruir gráfico existente se houver
+                if (this.charts.pace) {
+                    this.charts.pace.destroy();
+                }
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.pace = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ritmo (min/km)',
+                            data: paceData,
+                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                            borderColor: 'rgb(76, 175, 80)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'Tendência',
+                            data: trendData,
+                            borderColor: 'rgba(153, 153, 153, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                reverse: true, // Valores menores são melhores para ritmo
+                                title: {
+                                    display: true,
+                                    text: 'Ritmo (segundos/km)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        const minutes = Math.floor(value / 60);
+                                        const seconds = Math.floor(value % 60);
+                                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Data'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Evolução do Ritmo'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        const minutes = Math.floor(value / 60);
+                                        const seconds = Math.floor(value % 60);
+                                        return `Ritmo: ${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico de ritmo:", error);
+        }
+    },
+    
+    /**
+     * Create cardio chart (heart rate)
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
+     */
+    createCardioChart: function(elementId, runs) {
+        try {
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error(`Container de gráficos não encontrado: ${elementId}`);
+                return;
+            }
+            
+            this.ensureChartJsAvailable(() => {
+                // Filtrar corridas com dados de frequência cardíaca
+                const runsWithHR = runs.filter(run => run.avg_bpm || run.max_bpm);
+                
+                // Se não houver dados suficientes
+                if (runsWithHR.length < 2) {
+                    container.innerHTML = '<div class="no-data-message">Dados insuficientes de frequência cardíaca.</div>';
+                    return;
+                }
+                
+                // Ordenar por data
+                const sortedRuns = [...runsWithHR].sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Preparar dados para o gráfico
+                const labels = sortedRuns.map(run => {
+                    const date = new Date(run.date);
+                    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                });
+                
+                const avgBpm = sortedRuns.map(run => run.avg_bpm || null);
+                const maxBpm = sortedRuns.map(run => run.max_bpm || null);
+                
+                // Destruir gráfico existente se houver
+                if (this.charts.cardio) {
+                    this.charts.cardio.destroy();
+                }
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.cardio = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'BPM Médio',
+                            data: avgBpm,
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            borderColor: 'rgb(255, 193, 7)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'BPM Máximo',
+                            data: maxBpm,
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            borderColor: 'rgb(244, 67, 54)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: 'BPM'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Data'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Frequência Cardíaca'
+                            }
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico de cardio:", error);
+        }
+    },
+    
     /**
      * Create monthly summary chart
-     * @param {string} canvasId - Canvas element ID
-     * @param {Array} data - Run data array
+     * @param {string} elementId - Container element ID
+     * @param {Array} runs - Run data
      */
-    createMonthlyChart(canvasId, data) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        
-        // Group data by month
-        const monthlyData = this._aggregateDataByMonth(data);
-        
-        // Extract labels and values
-        const labels = Object.keys(monthlyData);
-        const distances = labels.map(month => monthlyData[month].distance.toFixed(1));
-        
-        // Create the chart
-        this.charts.monthly = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Distância mensal (km)',
-                    data: distances,
-                    backgroundColor: this.themeColors.primary,
-                    borderColor: this.themeColors.primaryDark,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
+    createMonthlyChart: function(elementId, runs) {
+        try {
+            // Verificar se o container existe
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error(`Container de gráficos não encontrado: ${elementId}`);
+                return;
+            }
+            
+            this.ensureChartJsAvailable(() => {
+                // Agrupar corridas por mês
+                const monthlyData = this._groupRunsByMonth(runs);
+                
+                // Preparar dados para o gráfico
+                const labels = Object.keys(monthlyData);
+                const distanceData = labels.map(month => monthlyData[month].totalDistance);
+                const runCountData = labels.map(month => monthlyData[month].runCount);
+                
+                // Destruir gráfico existente se houver
+                if (this.charts.monthly) {
+                    this.charts.monthly.destroy();
+                }
+                
+                // Criar o novo gráfico
+                const ctx = container.getContext('2d');
+                this.charts.monthly = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Distância Total (km)',
+                            data: distanceData,
+                            backgroundColor: 'rgba(255, 133, 51, 0.7)',
+                            borderColor: 'rgb(255, 133, 51)',
+                            borderWidth: 1,
+                            order: 1,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Número de Treinos',
+                            data: runCountData,
+                            type: 'line',
+                            backgroundColor: 'rgba(51, 153, 255, 0.7)',
+                            borderColor: 'rgb(51, 153, 255)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            order: 0,
+                            yAxisID: 'y1'
+                        }]
                     },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: (context) => {
-                                const monthKey = labels[context.dataIndex];
-                                const monthData = monthlyData[monthKey];
-                                return [
-                                    `Treinos: ${monthData.count}`,
-                                    `Tempo total: ${this._formatDuration(monthData.duration)}`,
-                                    `Distância média: ${(monthData.distance / monthData.count).toFixed(2)} km`
-                                ];
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distância Total (km)'
+                                }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                position: 'right',
+                                grid: {
+                                    drawOnChartArea: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Número de Treinos'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Resumo Mensal'
                             }
                         }
                     }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: this.themeColors.chartGrid,
-                            borderColor: this.themeColors.chartGrid
-                        },
-                        ticks: {
-                            callback: (value) => `${value} km`
-                        }
+                });
+            });
+        } catch (error) {
+            console.error("Erro ao criar gráfico mensal:", error);
+        }
+    },
+    
+    /**
+     * Calcular tendência linear (regressão)
+     * @param {Array} data - Array de valores numéricos
+     * @returns {Object} Objeto com slope e intercept
+     */
+    _calculateTrendLine: function(data) {
+        try {
+            // Se não houver dados suficientes, retornar uma linha reta
+            if (!data || data.length < 2) {
+                return { slope: 0, intercept: data && data.length > 0 ? data[0] : 0 };
+            }
+            
+            const n = data.length;
+            let sumX = 0;
+            let sumY = 0;
+            let sumXY = 0;
+            let sumXX = 0;
+            
+            // Para X usamos o índice (0, 1, 2, ...)
+            for (let i = 0; i < n; i++) {
+                const x = i;
+                const y = data[i];
+                sumX += x;
+                sumY += y;
+                sumXY += x * y;
+                sumXX += x * x;
+            }
+            
+            // Fórmulas de regressão linear
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            return { slope, intercept };
+        } catch (error) {
+            console.error("Erro ao calcular linha de tendência:", error);
+            return { slope: 0, intercept: 0 };
+        }
+    },
+    
+    /**
+     * Agrupar corridas por mês
+     * @param {Array} runs - Array de corridas
+     * @returns {Object} Objeto com dados mensais
+     */
+    _groupRunsByMonth: function(runs) {
+        try {
+            const months = {};
+            
+            // Definir nomes dos meses em português
+            const monthNames = [
+                'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+                'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+            ];
+            
+            // Percorrer todas as corridas
+            runs.forEach(run => {
+                try {
+                    const date = new Date(run.date);
+                    const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear()}`;
+                    
+                    // Inicializar dados para este mês se necessário
+                    if (!months[monthKey]) {
+                        months[monthKey] = {
+                            totalDistance: 0,
+                            totalDuration: 0,
+                            runCount: 0
+                        };
                     }
+                    
+                    // Acumular dados
+                    months[monthKey].totalDistance += parseFloat(run.distance || 0);
+                    months[monthKey].totalDuration += parseInt(run.duration || 0);
+                    months[monthKey].runCount++;
+                } catch (e) {
+                    console.warn("Erro ao processar corrida para gráfico mensal:", e);
                 }
-            }
-        });
-    }
-
-    /**
-     * Add a trendline to an existing chart
-     * @private
-     * @param {Chart} chart - Chart.js instance
-     * @param {Array} data - Data points
-     * @param {boolean} isPaceChart - Whether this is a pace chart (where lower is better)
-     */
-    _addTrendline(chart, data, isPaceChart = false) {
-        const n = data.length;
-        if (n <= 1) return; // Need at least 2 points
-        
-        // Calculate trendline using linear regression
-        let sumX = 0;
-        let sumY = 0;
-        let sumXY = 0;
-        let sumXX = 0;
-        
-        for (let i = 0; i < n; i++) {
-            sumX += i;
-            sumY += data[i];
-            sumXY += i * data[i];
-            sumXX += i * i;
-        }
-        
-        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-        const intercept = (sumY - slope * sumX) / n;
-        
-        // Calculate trendline points
-        const trendData = [];
-        for (let i = 0; i < n; i++) {
-            trendData.push(slope * i + intercept);
-        }
-        
-        // Determine color based on slope direction
-        // For pace charts, negative slope is good (getting faster)
-        // For other charts, positive slope is typically good (improving)
-        const isPositiveTrend = isPaceChart ? slope < 0 : slope > 0;
-        const trendColor = isPositiveTrend ? '#4CAF50' : '#FF5252'; // Green for positive, red for negative
-        
-        // Add trendline dataset to the chart
-        chart.data.datasets.push({
-            label: 'Tendência',
-            data: trendData,
-            borderColor: trendColor,
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            tension: 0,
-            pointRadius: 0,
-            pointHoverRadius: 0
-        });
-        
-        chart.update();
-    }
-
-    /**
-     * Aggregate run data by month
-     * @private
-     * @param {Array} data - Run data array
-     * @returns {Object} Aggregated monthly data
-     */
-    _aggregateDataByMonth(data) {
-        const monthlyData = {};
-        
-        // Process each run
-        data.forEach(run => {
-            const date = new Date(run.date);
-            const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-            const monthName = this._formatMonthYear(date);
+            });
             
-            // Initialize if this month doesn't exist yet
-            if (!monthlyData[monthName]) {
-                monthlyData[monthName] = {
-                    count: 0,
-                    distance: 0,
-                    duration: 0,
-                    monthYear: monthYear // For sorting
-                };
-            }
-            
-            // Add this run's data
-            monthlyData[monthName].count++;
-            monthlyData[monthName].distance += parseFloat(run.distance) || 0;
-            monthlyData[monthName].duration += parseInt(run.duration) || 0;
-        });
-        
-        // Sort by date (newest first)
-        const sortedKeys = Object.keys(monthlyData).sort((a, b) => {
-            return monthlyData[b].monthYear.localeCompare(monthlyData[a].monthYear);
-        });
-        
-        // Create a new object with sorted keys
-        const result = {};
-        sortedKeys.forEach(key => {
-            result[key] = monthlyData[key];
-        });
-        
-        return result;
+            return months;
+        } catch (error) {
+            console.error("Erro ao agrupar corridas por mês:", error);
+            return {};
+        }
     }
+};
 
-    /**
-     * Format duration in minutes to hours and minutes
-     * @private
-     * @param {number} minutes - Duration in minutes
-     * @returns {string} Formatted duration
-     */
-    _formatDuration(minutes) {
-        const hours = Math.floor(minutes / 60);
-        const mins = Math.round(minutes % 60);
-        return hours > 0 ? `${hours}h ${mins}min` : `${mins} min`;
-    }
-
-    /**
-     * Format month and year for display
-     * @private
-     * @param {Date} date - Date object
-     * @returns {string} Formatted month and year
-     */
-    _formatMonthYear(date) {
-        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        return `${months[date.getMonth()]}/${date.getFullYear()}`;
-    }
-
-    /**
-     * Render a message when no data is available
-     * @private
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     * @param {string} message - Message to display
-     */
-    _renderNoDataMessage(ctx, message) {
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '16px Roboto, "Segoe UI", Arial, sans-serif';
-        ctx.fillStyle = '#FFFFFF';
-        
-        const canvas = ctx.canvas;
-        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
-        
-        ctx.restore();
-    }
-}
-
-// Create and export a singleton instance
-const charts = new ChartManager();
+// Exportar globalmente para uso em outras partes da aplicação
+window.charts = charts;
