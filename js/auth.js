@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData(loginForm);
             
             // Send login request
-            fetch('/auth/login.php', {
+            fetch('../auth/login.php', {
                 method: 'POST',
                 body: formData
             })
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Send register request
-            fetch('/auth/register.php', {
+            fetch('../auth/register.php', {
                 method: 'POST',
                 body: formData
             })

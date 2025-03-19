@@ -1,4 +1,11 @@
 <?php
+// Ativar exibição de erros durante desenvolvimento
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Log para depuração
+error_log("Registro iniciado - " . date('Y-m-d H:i:s'));
+
 require_once '../includes/auth_functions.php';
 
 header('Content-Type: application/json');
@@ -16,6 +23,9 @@ $data = json_decode(file_get_contents('php://input'), true);
 if ($data === null) {
     $data = $_POST;
 }
+
+// Log para depuração
+error_log("Dados recebidos: " . print_r($data, true));
 
 // Validar campos obrigatórios
 $requiredFields = ['name', 'email', 'password', 'confirm-password'];
