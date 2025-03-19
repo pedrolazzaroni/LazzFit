@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LazzFit</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="dashboard-sidebar">
+            <div class="sidebar-header">
+                <a href="../index.html" class="logo">
+                    <h2>Lazz<span>Fit</span></h2>
+                </a>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <img src="../images/default-avatar.png" alt="Perfil do usuário">
+                </div>
+                <div class="user-info">
+                    <h3 class="user-name">João Silva</h3>
+                    <p class="user-level">Corredor Intermediário</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="#"><i class="fas fa-home"></i> Visão Geral</a></li>
+                    <li><a href="workout-planner.html"><i class="fas fa-running"></i> Planejar Treinos</a></li>
+                    <li><a href="plans.html"><i class="fas fa-calendar-alt"></i> Meus Planos</a></li>
+                    <li><a href="tracking.html"><i class="fas fa-chart-line"></i> Acompanhamento</a></li>
+                    <li><a href="community.html"><i class="fas fa-users"></i> Comunidade</a></li>
+                    <li><a href="profile.html"><i class="fas fa-user-cog"></i> Perfil</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <header class="dashboard-header">
+                <button class="sidebar-toggle" id="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Dashboard</h1>
+                <div class="header-actions">
+                    <a href="workout-planner.html" class="cta cta--primary"><i class="fas fa-plus"></i> Novo Treino</a>
+                    <div class="notifications">
+                        <button class="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge">3</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <!-- Welcome Card -->
+                <section class="welcome-card">
+                    <div class="welcome-content">
+                        <h2>Bem-vindo, João!</h2>
+                        <p>Continue sua jornada de corrida. Seu próximo treino está programado para <strong>hoje às 18:00</strong>.</p>
+                    </div>
+                    <div class="welcome-actions">
+                        <a href="tracking.html" class="cta cta--secondary">Ver Treino</a>
+                    </div>
+                </section>
+
+                <!-- Stat Cards -->
+                <section class="stat-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Treinos Completos</h3>
+                            <p class="stat-value">24</p>
+                            <p class="stat-change positive">+3 esta semana</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-road"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Distância Total</h3>
+                            <p class="stat-value">128 km</p>
+                            <p class="stat-change positive">+15 km este mês</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-stopwatch"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Tempo em Movimento</h3>
+                            <p class="stat-value">14h 23m</p>
+                            <p class="stat-change neutral">Semelhante à média</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-medal"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Recordes Pessoais</h3>
+                            <p class="stat-value">5</p>
+                            <p class="stat-change positive">Novo recorde de 5K!</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Recent Runs & Progress -->
+                <div class="content-grid">
+                    <!-- Recent Runs -->
+                    <section class="content-card recent-runs">
+                        <div class="card-header">
+                            <h2>Corridas Recentes</h2>
+                            <a href="tracking.html" class="view-all">Ver todas</a>
+                        </div>
+                        <div class="card-content">
+                            <table class="runs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Distância</th>
+                                        <th>Tempo</th>
+                                        <th>Ritmo</th>
+                                        <th>Sensação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>25/09/2023</td>
+                                        <td>5.2 km</td>
+                                        <td>28:15</td>
+                                        <td>5:26/km</td>
+                                        <td>
+                                            <div class="feeling good">
+                                                <i class="fas fa-smile"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>23/09/2023</td>
+                                        <td>10 km</td>
+                                        <td>55:20</td>
+                                        <td>5:32/km</td>
+                                        <td>
+                                            <div class="feeling average">
+                                                <i class="fas fa-meh"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>20/09/2023</td>
+                                        <td>8 km</td>
+                                        <td>42:50</td>
+                                        <td>5:21/km</td>
+                                        <td>
+                                            <div class="feeling good">
+                                                <i class="fas fa-smile"></i>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Progress Chart -->
+                    <section class="content-card progress-chart">
+                        <div class="card-header">
+                            <h2>Progresso</h2>
+                            <div class="chart-options">
+                                <button class="chart-option active" data-period="week">Semana</button>
+                                <button class="chart-option" data-period="month">Mês</button>
+                                <button class="chart-option" data-period="year">Ano</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="chart-container">
+                                <canvas id="progressChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Current Plan -->
+                <section class="content-card current-plan">
+                    <div class="card-header">
+                        <h2>Plano de Treino Atual</h2>
+                        <a href="plans.html" class="view-all">Gerenciar Planos</a>
+                    </div>
+                    <div class="card-content">
+                        <div class="plan-info">
+                            <div class="plan-header">
+                                <h3>Preparação para Meia-Maratona</h3>
+                                <div class="plan-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress" style="width: 35%"></div>
+                                    </div>
+                                    <span>35% completo</span>
+                                </div>
+                            </div>
+                            
+                            <div class="plan-schedule">
+                                <div class="schedule-day completed">
+                                    <div class="day-header">
+                                        <h4>Segunda</h4>
+                                        <span class="day-status">Completo</span>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Corrida leve - 5km</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day completed">
+                                    <div class="day-header">
+                                        <h4>Terça</h4>
+                                        <span class="day-status">Completo</span>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Descanso</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day active">
+                                    <div class="day-header">
+                                        <h4>Quarta</h4>
+                                        <span class="day-status">Hoje</span>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Treino intervalado - 6 x 400m</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day">
+                                    <div class="day-header">
+                                        <h4>Quinta</h4>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Corrida moderada - 6km</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day">
+                                    <div class="day-header">
+                                        <h4>Sexta</h4>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Descanso</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day">
+                                    <div class="day-header">
+                                        <h4>Sábado</h4>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Ritmo de corrida - 3 x 1.5km</p>
+                                    </div>
+                                </div>
+                                <div class="schedule-day">
+                                    <div class="day-header">
+                                        <h4>Domingo</h4>
+                                    </div>
+                                    <div class="day-content">
+                                        <p>Corrida longa - 12km</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Community Activity -->
+                <section class="content-card community-activity">
+                    <div class="card-header">
+                        <h2>Atividade da Comunidade</h2>
+                        <a href="community.html" class="view-all">Ver mais</a>
+                    </div>
+                    <div class="card-content">
+                        <div class="activity-feed">
+                            <div class="activity-item">
+                                <div class="activity-user">
+                                    <img src="../images/user-1.jpg" alt="Usuário">
+                                    <div>
+                                        <h4>Ana Oliveira</h4>
+                                        <span class="activity-time">2h atrás</span>
+                                    </div>
+                                </div>
+                                <div class="activity-content">
+                                    <p>Completou uma corrida de 10km em 48 minutos! 🏃‍♀️</p>
+                                    <div class="activity-stats">
+                                        <span><i class="fas fa-road"></i> 10km</span>
+                                        <span><i class="fas fa-stopwatch"></i> 48:20</span>
+                                        <span><i class="fas fa-fire"></i> 520 cal</span>
+                                    </div>
+                                </div>
+                                <div class="activity-actions">
+                                    <button><i class="fas fa-thumbs-up"></i> 15</button>
+                                    <button><i class="fas fa-comment"></i> 3</button>
+                                </div>
+                            </div>
+
+                            <div class="activity-item">
+                                <div class="activity-user">
+                                    <img src="../images/user-2.jpg" alt="Usuário">
+                                    <div>
+                                        <h4>Carlos Santos</h4>
+                                        <span class="activity-time">5h atrás</span>
+                                    </div>
+                                </div>
+                                <div class="activity-content">
+                                    <p>Novo recorde pessoal na meia maratona! 💯</p>
+                                    <div class="activity-stats">
+                                        <span><i class="fas fa-road"></i> 21.1km</span>
+                                        <span><i class="fas fa-stopwatch"></i> 1:45:03</span>
+                                        <span><i class="fas fa-medal"></i> PR</span>
+                                    </div>
+                                </div>
+                                <div class="activity-actions">
+                                    <button><i class="fas fa-thumbs-up"></i> 24</button>
+                                    <button><i class="fas fa-comment"></i> 7</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../js/main.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>

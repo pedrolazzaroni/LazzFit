@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Conta - LazzFit</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-image"></div>
+        <div class="auth-form-container">
+            <div class="auth-form">
+                <div class="auth-form-header">
+                    <a href="../index.html" class="logo">
+                        <h2>Lazz<span>Fit</span></h2>
+                    </a>
+                    <h2>Comece sua jornada fitness</h2>
+                    <p>Crie sua conta para acessar todos os recursos</p>
+                </div>
+                
+                <form class="register-form">
+                    <div class="form-group">
+                        <label for="name">Nome completo</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" name="password" required>
+                        <small class="form-help">Mínimo de 8 caracteres, incluindo letras e números</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">Confirmar senha</label>
+                        <input type="password" id="confirm-password" name="confirm-password" required>
+                    </div>
+                    
+                    <div class="form-group form-checkbox">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="terms" name="terms" required>
+                            <label for="terms">Li e concordo com os <a href="../pages/terms.html" target="_blank">Termos de Uso</a> e <a href="../pages/privacy.html" target="_blank">Política de Privacidade</a></label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="cta cta--primary" style="width: 100%;">Criar conta</button>
+                </form>
+                
+                <div class="auth-form-footer">
+                    <p>Já tem uma conta? <a href="login.html">Entrar</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+</body>
+</html>
