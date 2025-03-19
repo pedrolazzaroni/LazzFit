@@ -65,19 +65,17 @@ class DatabaseManager:
     def connect(self):
         """Conecta ao banco de dados (sem iniciar transação)"""
         try:
+            # Always create a new connection - don't reuse connections across different method calls
+            # This prevents the "SQLite objects created in a thread can only be used in that same thread" error
+            
+            # Close any existing connection first
             if self.conn:
-                # Verificar se a conexão ainda está ativa
                 try:
-                    self.conn.execute("SELECT 1")
-                    return True
-                except sqlite3.Error:
-                    # Conexão não está mais válida, fechamos e tentamos novamente
-                    try:
-                        self.conn.close()
-                    except:
-                        pass
-                    self.conn = None
-                    self.cursor = None
+                    self.conn.close()
+                except:
+                    pass
+                self.conn = None
+                self.cursor = None
             
             # Verificar se o diretório do banco existe, se não, criar
             db_dir = os.path.dirname(self.db_name)
@@ -94,14 +92,16 @@ class DatabaseManager:
             self.conn.execute("PRAGMA foreign_keys = ON")
             # Configuração mais robusta de journal
             self.conn.execute("PRAGMA journal_mode = DELETE")
-            # Modo FULL para máxima segurança de dados
-            self.conn.execute("PRAGMA synchronous = NORMAL")  # NORMAL é bom equilíbrio entre segurança e performance
+            # Modo NORMAL para equilíbrio entre segurança e performance
+            self.conn.execute("PRAGMA synchronous = NORMAL")
             
             self.cursor = self.conn.cursor()
             return True
             
         except sqlite3.Error as e:
             print(f"❌ Erro de conexão ao banco: {e}")
+            self.conn = None
+            self.cursor = None
             return False
     
     def begin_transaction(self):
@@ -156,6 +156,11 @@ class DatabaseManager:
                 self.conn = None
                 self.cursor = None
                 self.transaction_active = False
+    
+    # Alias para disconnect para compatibilidade com código existente
+    def close(self):
+        """Fecha a conexão com o banco de dados"""
+        self.disconnect()
     
     def setup(self):
         """Configura o banco de dados com tratamento de erros melhorado"""
@@ -644,6 +649,7 @@ class DatabaseManager:
     def get_training_plan(self, plan_id):
         """Retorna um plano de treinamento específico com todas as suas semanas e sessões"""
         if not self.connect():
+            print("Failed to connect to database for getting training plan")
             return None
             
         try:
@@ -658,7 +664,7 @@ class DatabaseManager:
             self.cursor.execute("SELECT * FROM training_weeks WHERE plan_id = ? ORDER BY week_number", (plan_id,))
             weeks = self.cursor.fetchall()
             
-            # Obter todas as sessões para cada semana
+            # Preparar os dados do plano
             plan_data = {
                 "id": plan[0],
                 "name": plan[1],
@@ -671,11 +677,21 @@ class DatabaseManager:
                 "weeks": []
             }
             
+            # Para cada semana
             for week in weeks:
                 week_id = week[0]
+                
+                # Fazer uma nova conexão para cada semana para evitar erro de thread
+                self.disconnect()
+                if not self.connect():
+                    print(f"Failed to connect for week {week_id} sessions")
+                    continue
+                    
+                # Buscar as sessões desta semana
                 self.cursor.execute("SELECT * FROM training_sessions WHERE week_id = ? ORDER BY day_of_week", (week_id,))
                 sessions = self.cursor.fetchall()
                 
+                # Construir os dados da semana
                 week_data = {
                     "id": week[0],
                     "week_number": week[2],
@@ -685,6 +701,7 @@ class DatabaseManager:
                     "sessions": []
                 }
                 
+                # Para cada sessão na semana
                 for session in sessions:
                     session_data = {
                         "id": session[0],
@@ -702,42 +719,53 @@ class DatabaseManager:
                 plan_data["weeks"].append(week_data)
             
             return plan_data
-        except sqlite3.Error as e:
-            print(f"Erro ao obter plano de treinamento: {e}")
+        except Exception as e:
+            print(f"Error retrieving training plan: {e}")
+            traceback.print_exc()
             return None
         finally:
             self.disconnect()
     
-    def update_training_plan(self, plan_id, name, goal, duration_weeks, level, notes):
-        """Atualiza um plano de treinamento existente"""
+    def update_training_plan(self, plan_id, name, goal, duration_weeks, level, notes=""):
+        """Update a training plan"""
         if not self.connect():
+            print("Failed to connect to database for training plan update")
             return False
             
         try:
+            # Begin transaction
             self.begin_transaction()
             
-            updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
             self.cursor.execute(
-                "UPDATE training_plans SET name=?, goal=?, duration_weeks=?, level=?, notes=?, updated_at=? WHERE id=?",
-                (name, goal, duration_weeks, level, notes, updated_at, plan_id)
+                """
+                UPDATE training_plans 
+                SET name = ?, goal = ?, duration_weeks = ?, level = ?, notes = ?, updated_at = datetime('now')
+                WHERE id = ?
+                """, 
+                (name, goal, duration_weeks, level, notes, plan_id)
             )
             
+            # Commit changes
             self.commit()
+            print(f"Plan {plan_id} base info updated successfully")
             return True
-        except sqlite3.Error as e:
-            print(f"Erro ao atualizar plano de treinamento: {e}")
+        except Exception as e:
+            print(f"Error updating training plan: {e}")
+            traceback.print_exc()
             self.rollback()
             return False
         finally:
+            # Always close the connection
             self.disconnect()
-    
+
     def update_training_week(self, week_id, focus, total_distance, notes):
         """Atualiza uma semana de treinamento"""
         if not self.connect():
+            print("Failed to connect to database for training week update")
             return False
             
         try:
+            # Begin transaction
             self.begin_transaction()
             
             self.cursor.execute(
@@ -757,41 +785,44 @@ class DatabaseManager:
             self.commit()
             return True
         except sqlite3.Error as e:
-            print(f"Erro ao atualizar semana de treinamento: {e}")
+            print(f"Error updating training week: {e}")
+            traceback.print_exc()
             self.rollback()
             return False
         finally:
             self.disconnect()
-    
-    def update_training_session(self, session_id, workout_type, distance, duration, intensity, pace_target, hr_zone, details):
-        """Atualiza uma sessão de treinamento"""
+
+    def update_training_session(self, session_id, workout_type, distance, duration, intensity, pace_target="", hr_zone="", details=""):
+        """Update a training session"""
         if not self.connect():
+            print("Failed to connect to database for training session update")
             return False
             
         try:
+            # Begin transaction
             self.begin_transaction()
             
             self.cursor.execute(
-                "UPDATE training_sessions SET workout_type=?, distance=?, duration=?, intensity=?, pace_target=?, hr_zone=?, details=? WHERE id=?",
+                """
+                UPDATE training_sessions
+                SET workout_type = ?, distance = ?, duration = ?, 
+                    intensity = ?, pace_target = ?, hr_zone = ?, details = ?
+                WHERE id = ?
+                """,
                 (workout_type, distance, duration, intensity, pace_target, hr_zone, details, session_id)
             )
             
-            # Atualizar o timestamp no plano principal
-            self.cursor.execute(
-                """
-                UPDATE training_plans SET updated_at=?
-                WHERE id=(SELECT plan_id FROM training_weeks WHERE id=(SELECT week_id FROM training_sessions WHERE id=?))
-                """,
-                (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), session_id)
-            )
-            
+            # Commit changes
             self.commit()
+            print(f"Session {session_id} updated successfully with workout type: {workout_type}")
             return True
-        except sqlite3.Error as e:
-            print(f"Erro ao atualizar sessão de treinamento: {e}")
+        except Exception as e:
+            print(f"Error updating training session: {e}")
+            traceback.print_exc()
             self.rollback()
             return False
         finally:
+            # Always close the connection
             self.disconnect()
     
     def delete_training_plan(self, plan_id):
@@ -954,3 +985,13 @@ class DatabaseManager:
             return False
         finally:
             self.disconnect()
+    
+    def close(self):
+        """Close the database connection"""
+        if self.conn:
+            try:
+                self.conn.close()
+                self.conn = None
+                self.cursor = None
+            except Exception as e:
+                print(f"Error closing database connection: {e}")

@@ -202,23 +202,17 @@ class AppClass {
             // Limpar notificações de erro de banco de dados que possam ter sido mostradas
             this.clearDatabaseErrorNotifications();
             
-            if (window.api && api.isPyWebView) {
+            // MODIFICADO: Remover geração de dados mock completamente
+            if (window.pywebview && window.pywebview.api) {
                 // Usando API PyWebView
                 this.updateLoadingStatus("Carregando registros de treino...", 50);
                 this.runs = await window.pywebview.api.get_all_runs();
                 console.log(`✓ ${this.runs.length} treinos carregados via PyWebView API`);
             } else {
-                // Modo de desenvolvimento - dados de exemplo
-                await new Promise(r => setTimeout(r, 500)); // Simular delay
-                
-                // Fix: Check if getMockRuns exists before calling it
-                if (window.api && typeof api.getMockRuns === 'function') {
-                    this.runs = api.getMockRuns();
-                } else {
-                    // Provide mock data if the function doesn't exist
-                    this.runs = this._generateMockRunData();
-                }
-                console.log("✓ Dados de exemplo carregados para desenvolvimento");
+                // Modo de desenvolvimento - sem dados mock
+                console.warn("API do PyWebView não encontrada. Funcionamento limitado.");
+                this.showNotification("API do back-end não encontrada. Funcionalidade limitada.", "warning");
+                this.runs = [];
             }
             
             this.dataLoaded = true;
@@ -228,41 +222,6 @@ class AppClass {
             this.showNotification("Erro ao carregar dados de treinos: " + error.message, "error", "db-error");
             return false;
         }
-    }
-    
-    /**
-     * Generate mock run data for development
-     * @private
-     */
-    _generateMockRunData() {
-        // Create sample data for development testing
-        const today = new Date();
-        const runs = [];
-        
-        for (let i = 0; i < 10; i++) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i * 2); // Every 2 days back
-            
-            // Generate random data
-            const distance = (5 + Math.random() * 5).toFixed(2);
-            const duration = Math.floor(distance * (8 + Math.random() * 4)); // 8-12 min/km pace
-            const pace = (duration / distance).toFixed(2);
-            
-            runs.push({
-                id: i + 1,
-                date: date.toISOString().split('T')[0],
-                distance: parseFloat(distance),
-                duration: duration,
-                avg_pace: Math.floor(pace / 60) + ":" + (Math.floor(pace % 60)).toString().padStart(2, '0'),
-                avg_bpm: Math.floor(140 + Math.random() * 20),
-                max_bpm: Math.floor(170 + Math.random() * 20),
-                elevation_gain: Math.floor(Math.random() * 100),
-                calories: Math.floor(distance * 60),
-                workout_type: i % 3 === 0 ? "Corrida Leve" : i % 3 === 1 ? "Corrida na Esteira" : "Trail Running",
-                notes: `Treino de exemplo #${i+1}`
-            });
-        }
-        return runs;
     }
     
     /**

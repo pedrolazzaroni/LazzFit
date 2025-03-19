@@ -7,7 +7,7 @@ const api = {
     initialized: false,
     initAttempts: 0,
     maxInitAttempts: 15,  // Aumentado para 15 tentativas
-    lastFetchedRuns: null, // NOVA PROPRIEDADE: Armazena o último resultado de getAllRuns
+    lastFetchedRuns: null, // Armazena o último resultado de getAllRuns
     
     /**
      * Inicializa a API e verifica o ambiente
@@ -176,30 +176,15 @@ const api = {
                 const runs = await window.pywebview.api.get_all_runs();
                 console.log(`✅ Recebidos ${runs.length} treinos do servidor`);
                 
-                // CORREÇÃO: Armazenar resultado para uso em caso de falha futura
+                // Armazenar resultado para uso em caso de falha futura
                 this.lastFetchedRuns = runs;
                 return runs;
             } else {
-                // Sem ambiente PyWebView, verificar se temos dados em cache
-                if (this.lastFetchedRuns) {
-                    console.log("📊 Usando dados de treinos em cache");
-                    return this.lastFetchedRuns;
-                }
-                
-                // Sem cache disponível, alerta sobre a impossibilidade de carregar dados
-                this.showDatabaseError();
+                console.warn("API não disponível - retornando array vazio");
                 return [];
             }
         } catch (error) {
             console.error("Erro ao buscar corridas:", error);
-            
-            // CORREÇÃO: Em caso de erro, retornar o cache se disponível
-            if (this.lastFetchedRuns) {
-                console.log("⚠️ Erro ao buscar treinos. Usando dados em cache...");
-                return this.lastFetchedRuns;
-            }
-            
-            this.showDatabaseError();
             return [];
         }
     },
@@ -295,7 +280,6 @@ const api = {
                 return await window.pywebview.api.get_workout_types();
             } else {
                 console.error("Erro: API Python não disponível para obter tipos de treino.");
-                // Retornar uma lista básica em caso de erro
                 return ["Corrida de Rua", "Outro"];
             }
         } catch (error) {
@@ -343,46 +327,6 @@ const api = {
     },
     
     /**
-     * Exporta corridas selecionadas para Excel
-     * @param {Array} runIds - Lista de IDs das corridas a exportar
-     * @returns {Promise<Boolean>} Sucesso da operação
-     */
-    exportSelectedRunsToExcel: async function(runIds) {
-        try {
-            if (this.isPyWebView) {
-                return await window.pywebview.api.export_selected_to_excel(runIds);
-            } else {
-                console.error("Erro: API Python não disponível. Não é possível exportar seleção para Excel.");
-                this.showDatabaseError();
-                return false;
-            }
-        } catch (error) {
-            console.error("Erro ao exportar corridas selecionadas para Excel:", error);
-            return false;
-        }
-    },
-    
-    /**
-     * Exporta corridas selecionadas para CSV
-     * @param {Array} runIds - Lista de IDs das corridas a exportar
-     * @returns {Promise<Boolean>} Sucesso da operação
-     */
-    exportSelectedRunsToCSV: async function(runIds) {
-        try {
-            if (this.isPyWebView) {
-                return await window.pywebview.api.export_selected_to_csv(runIds);
-            } else {
-                console.error("Erro: API Python não disponível. Não é possível exportar seleção para CSV.");
-                this.showDatabaseError();
-                return false;
-            }
-        } catch (error) {
-            console.error("Erro ao exportar corridas selecionadas para CSV:", error);
-            return false;
-        }
-    },
-
-    /**
      * Mostra um erro de banco de dados ao usuário
      */
     showDatabaseError: function() {
@@ -410,18 +354,23 @@ const api = {
      * Obter todos os planos de treino
      * @returns {Promise<Array>} Lista de planos de treino
      */
-    async getAllTrainingPlans() {
-        if (this.isPyWebView) {
-            try {
-                return await window.pywebview.api.get_all_training_plans();
-            } catch (error) {
-                console.error("Erro ao obter planos de treino:", error);
+    getAllTrainingPlans: async function() {
+        try {
+            if (!this.isPyWebView && !this.initialized) {
+                await this.init();
+            }
+            
+            if (this.isPyWebView) {
+                const plans = await window.pywebview.api.get_all_training_plans();
+                console.log(`✅ Recebidos ${plans.length} planos do servidor`);
+                return plans || [];
+            } else {
+                console.warn("API não disponível - nenhum plano de treino retornado");
                 return [];
             }
-        } else {
-            console.log("Modo de desenvolvimento: simulando obtenção de planos");
-            await new Promise(r => setTimeout(r, 500));
-            return this.getMockPlans();
+        } catch (error) {
+            console.error("Erro ao obter planos de treino:", error);
+            return [];
         }
     },
     
@@ -430,76 +379,21 @@ const api = {
      * @param {number} planId - ID do plano
      * @returns {Promise<Object|null>} Detalhes do plano ou null se não encontrado
      */
-    async getTrainingPlan(planId) {
-        if (this.isPyWebView) {
-            try {
+    getTrainingPlan: async function(planId) {
+        try {
+            if (!this.isPyWebView && !this.initialized) {
+                await this.init();
+            }
+            
+            if (this.isPyWebView) {
                 return await window.pywebview.api.get_training_plan(planId);
-            } catch (error) {
-                console.error(`Erro ao obter plano ${planId}:`, error);
+            } else {
+                console.error("API não disponível - não é possível buscar plano");
                 return null;
             }
-        } else {
-            console.log(`Modo de desenvolvimento: simulando obtenção do plano ${planId}`);
-            await new Promise(r => setTimeout(r, 500));
-            const plan = this.getMockPlans().find(p => p.id === planId);
-            if (!plan) return null;
-            
-            // Simular dados adicionais para o plano
-            return {
-                ...plan,
-                notes: "Notas de exemplo para este plano.",
-                weeks: [
-                    {
-                        id: 1,
-                        week_number: 1,
-                        focus: "Adaptação",
-                        total_distance: 30,
-                        notes: "Foco em volume baixo para adaptação",
-                        sessions: []
-                    }
-                    // Outras semanas seriam geradas automaticamente
-                ]
-            };
-        }
-    },
-    
-    /**
-     * Criar um novo plano de treino
-     * @param {Object} planData - Dados do plano a ser criado
-     * @returns {Promise<boolean>} Sucesso da operação
-     */
-    async createTrainingPlan(planData) {
-        if (this.isPyWebView) {
-            try {
-                return await window.pywebview.api.create_training_plan(planData);
-            } catch (error) {
-                console.error("Erro ao criar plano de treino:", error);
-                return false;
-            }
-        } else {
-            console.log("Modo de desenvolvimento: simulando criação de plano", planData);
-            await new Promise(r => setTimeout(r, 800));
-            return true;
-        }
-    },
-    
-    /**
-     * Excluir um plano de treino
-     * @param {number} planId - ID do plano a ser excluído
-     * @returns {Promise<boolean>} Sucesso da operação
-     */
-    async deleteTrainingPlan(planId) {
-        if (this.isPyWebView) {
-            try {
-                return await window.pywebview.api.delete_training_plan(planId);
-            } catch (error) {
-                console.error(`Erro ao excluir plano ${planId}:`, error);
-                return false;
-            }
-        } else {
-            console.log(`Modo de desenvolvimento: simulando exclusão do plano ${planId}`);
-            await new Promise(r => setTimeout(r, 600));
-            return true;
+        } catch (error) {
+            console.error(`Erro ao obter plano ${planId}:`, error);
+            return null;
         }
     },
     
@@ -508,7 +402,7 @@ const api = {
      * @param {number} planId - ID do plano a ser exportado
      * @returns {Promise<Object>} Resultado da operação
      */
-    async exportTrainingPlanToExcel(planId) {
+    exportTrainingPlanToExcel: async function(planId) {
         if (this.isPyWebView) {
             try {
                 return await window.pywebview.api.export_training_plan_to_xlsx(planId);
@@ -517,50 +411,13 @@ const api = {
                 return { success: false, error: error.toString() };
             }
         } else {
-            console.log(`Modo de desenvolvimento: simulando exportação do plano ${planId} para Excel`);
-            await new Promise(r => setTimeout(r, 1000));
-            return { 
-                success: true, 
-                path: "C:/Users/exemplo/Downloads/plano_treino.xlsx"
-            };
+            console.error("API não disponível - não é possível exportar plano");
+            return { success: false, error: "API não disponível" };
         }
-    },
-    
-    // Dados simulados para desenvolvimento
-    getMockPlans() {
-        return [
-            {
-                id: 1,
-                name: "Plano para 5K",
-                goal: "Completar 5K em menos de 30 minutos",
-                duration_weeks: 4,
-                level: "Iniciante",
-                created_at: "2023-05-01 10:00:00",
-                updated_at: "2023-05-15 14:30:00"
-            },
-            {
-                id: 2,
-                name: "Preparação para 10K",
-                goal: "Melhorar ritmo em corridas de 10K",
-                duration_weeks: 8,
-                level: "Intermediário",
-                created_at: "2023-06-01 09:15:00",
-                updated_at: "2023-06-10 16:45:00"
-            },
-            {
-                id: 3,
-                name: "Plano Meia Maratona",
-                goal: "Completar meia maratona",
-                duration_weeks: 12,
-                level: "Avançado",
-                created_at: "2023-07-15 08:20:00",
-                updated_at: "2023-07-15 08:20:00"
-            }
-        ];
     }
 };
 
-// CORREÇÃO: Inicializar API imediatamente e na ordem correta
+// Inicializar API imediatamente e na ordem correta
 (function initializeAPI() {
     console.log("🚀 Inicializando API imediatamente na carga do script...");
     api.init();
@@ -584,44 +441,3 @@ const api = {
 
 // Exportar a API para uso global
 window.api = api;
-
-/**
- * Obter todos os planos de treino
- * @returns {Promise<Array>} Lista de planos de treino
- */
-api.getAllTrainingPlans = async function() {
-    if (this.isPyWebView) {
-        try {
-            return await window.pywebview.api.get_all_training_plans();
-        } catch (error) {
-            console.error("Erro ao obter planos de treino:", error);
-            // Fallback para dados de exemplo em caso de erro
-            return this.getMockPlans();
-        }
-    } else {
-        console.log("Modo de desenvolvimento: simulando obtenção de planos");
-        await new Promise(r => setTimeout(r, 500));
-        return this.getMockPlans();
-    }
-};
-
-/**
- * Obter detalhes de um plano de treino específico
- * @param {number} planId - ID do plano
- * @returns {Promise<Object|null>} Detalhes do plano ou null se não encontrado
- */
-api.getTrainingPlan = async function(planId) {
-    if (this.isPyWebView && window.pywebview && window.pywebview.api) {
-        try {
-            console.log(`API: Solicitando plano ${planId} ao backend`);
-            const result = await window.pywebview.api.get_training_plan(planId);
-            console.log(`API: Plano ${planId} recebido:`, result);
-            return result;
-        } catch (error) {
-            console.error(`API: Erro ao obter plano ${planId}:`, error);
-            throw new Error(`Falha ao obter plano #${planId}: ${error.message || "Erro desconhecido"}`);
-        }
-    } else {
-        throw new Error("API não disponível no ambiente atual");
-    }
-};

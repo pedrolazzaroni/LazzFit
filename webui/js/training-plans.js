@@ -228,14 +228,6 @@ const trainingPlans = {
     },
 
     /**
-     * Dados de exemplo para desenvolvimento
-     */
-    _getMockPlans: function() {
-        console.warn("Mock data requested but mock generation has been removed");
-        return [];
-    },
-    
-    /**
      * Exibe a tela de criação de plano
      */
     showCreatePlanView: function() {
@@ -611,41 +603,30 @@ const trainingPlans = {
             const planData = this._preparePlanDataForSave();
             console.log("Dados do plano a serem salvos:", planData);
             
+            // Verificar se estamos editando ou criando
+            const isEditing = this.currentPlan.id !== undefined;
             let success = false;
             let planId = null;
             
-            // Verificar se estamos editando ou criando
-            const isEditing = this.currentPlan.id !== undefined;
+            if (!window.pywebview || !window.pywebview.api) {
+                throw new Error("API do backend não disponível");
+            }
             
-            if (api.isPyWebView) {
-                try {
-                    if (isEditing) {
-                        // Enviar plano completo para atualização
-                        planId = await window.pywebview.api.update_training_plan_complete(
-                            planData
-                        );
-                        
-                        console.log("Resposta da API para atualização:", planId);
-                        success = planId !== null && planId !== undefined;
-                    } else {
-                        // Criar novo plano
-                        planId = await window.pywebview.api.create_training_plan_complete(
-                            planData
-                        );
-                        
-                        console.log("Resposta da API para criação:", planId);
-                        success = planId !== null && planId !== undefined;
-                    }
-                } catch (apiError) {
-                    console.error("Erro na API ao salvar plano:", apiError);
-                    throw new Error("Falha na comunicação com a API");
+            try {
+                if (isEditing) {
+                    // MELHORADO: Usar update_training_plan_complete para salvar todas as informações
+                    planId = await window.pywebview.api.update_training_plan_complete(planData);
+                    console.log("Resposta da API para atualização:", planId);
+                    success = planId !== null && planId !== undefined && planId !== false;
+                } else {
+                    // Criar novo plano
+                    planId = await window.pywebview.api.create_training_plan_complete(planData);
+                    console.log("Resposta da API para criação:", planId);
+                    success = planId !== null && planId !== undefined && planId !== false;
                 }
-            } else {
-                // Modo de desenvolvimento - simulação
-                console.log("SIMULAÇÃO: Salvando plano:", planData);
-                await new Promise(r => setTimeout(r, 1000));
-                success = true;
-                planId = this.currentPlan.id || 999;
+            } catch (apiError) {
+                console.error("Erro na API ao salvar plano:", apiError);
+                throw new Error("Falha na comunicação com a API: " + apiError.message);
             }
             
             if (success) {
@@ -661,7 +642,7 @@ const trainingPlans = {
                 
                 return true;
             } else {
-                throw new Error("Falha ao salvar o plano");
+                throw new Error("Falha ao salvar o plano no banco de dados");
             }
         } catch (error) {
             console.error("Erro ao salvar plano:", error);
@@ -669,6 +650,29 @@ const trainingPlans = {
             return false;
         } finally {
             app.hideLoading();
+        }
+    },
+
+    /**
+     * Carrega planos de treino do backend
+     */
+    loadTrainingPlans: async function() {
+        console.log("Carregando planos de treino...");
+        
+        try {
+            if (!window.pywebview || !window.pywebview.api) {
+                console.error("API PyWebView não disponível");
+                app.showNotification("API backend não disponível", "error");
+                return [];
+            }
+            
+            const plans = await window.pywebview.api.get_all_training_plans();
+            console.log(`${plans.length} planos carregados`);
+            return plans;
+        } catch (error) {
+            console.error("Erro ao carregar planos:", error);
+            app.showNotification("Erro ao carregar planos de treino", "error");
+            return [];
         }
     },
     

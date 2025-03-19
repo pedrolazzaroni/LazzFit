@@ -5,40 +5,33 @@
 
 // Função para visualizar plano de treino
 trainingPlans.showViewPlanView = async function(planId) {
-    console.log("Visualizando plano:", planId);
+    console.log("Carregando plano de treino:", planId);
     
     try {
-        // Mostrar loading
-        app.showLoading();
-        
-        // Buscar dados do plano
-        let planData = null;
-        
-        // Verificação mais robusta da API PyWebView
-        if (window.pywebview && window.pywebview.api) {
-            try {
-                console.log("Buscando plano via API PyWebView");
-                planData = await window.pywebview.api.get_training_plan(planId);
-                
-                if (!planData) {
-                    throw new Error("Plano não encontrado na base de dados");
-                }
-                
-                console.log("Dados do plano recebidos com sucesso");
-            } catch (apiError) {
-                console.error("Erro na API ao buscar plano:", apiError);
-                throw new Error("Falha na comunicação com a API: " + (apiError.message || "Erro desconhecido"));
-            }
-        } else {
-            console.error("API PyWebView não disponível");
-            throw new Error("API de backend não disponível");
+        if (!window.pywebview || !window.pywebview.api) {
+            app.showNotification("API backend não disponível", "error");
+            app.navigate('training-plans');
+            return;
         }
         
-        // Renderizar visualização do plano
-        this._renderPlanView(planData);
+        app.showLoading();
+        
+        // Carregar o plano do banco de dados
+        const plan = await window.pywebview.api.get_training_plan(planId);
+        
+        if (!plan) {
+            app.showNotification("Plano não encontrado", "error");
+            app.navigate('training-plans');
+            return;
+        }
+        
+        console.log("Plano carregado:", plan);
+        
+        this._renderPlanView(plan);
+        
     } catch (error) {
-        console.error("Erro ao visualizar plano:", error);
-        app.showNotification("Não foi possível carregar o plano de treino: " + (error.message || "Erro desconhecido"), "error");
+        console.error("Erro ao carregar plano:", error);
+        app.showNotification("Erro ao carregar plano", "error");
         app.navigate('training-plans');
     } finally {
         app.hideLoading();
@@ -250,45 +243,30 @@ trainingPlans._renderRestDay = function() {
 
 // Exportar plano para Excel
 trainingPlans._exportPlanToExcel = async function(plan) {
+    if (!plan || !plan.id) {
+        app.showNotification("Dados do plano inválidos para exportação", "error");
+        return;
+    }
+    
     try {
-        // Mostrar carregamento
-        const exportBtn = document.getElementById('export-plan-excel-btn');
-        const originalBtnText = exportBtn.innerHTML;
-        exportBtn.innerHTML = '<div class="loading-spinner"></div> Exportando...';
-        exportBtn.disabled = true;
-        
-        let result = false;
-        
-        if (api && api.isPyWebView) {
-            // Exportar via API
-            result = await window.pywebview.api.export_training_plan_to_xlsx(plan.id);
-        } else {
-            // Simulação para desenvolvimento
-            console.log("Simulando exportação do plano para Excel:", plan);
-            await new Promise(r => setTimeout(r, 1500));
-            result = { success: true, path: "C:/Exemplo/plano_treino.xlsx" };
+        app.showLoading();
+        if (!window.pywebview || !window.pywebview.api) {
+            app.showNotification("API backend não disponível", "error");
+            return;
         }
         
-        // Restaurar botão
-        exportBtn.innerHTML = originalBtnText;
-        exportBtn.disabled = false;
+        const result = await window.pywebview.api.export_training_plan_to_xlsx(plan.id);
         
-        // Mostrar resultado
         if (result && result.success) {
-            app.showNotification(`Plano exportado com sucesso! Salvo em: ${result.path}`, "success");
+            app.showNotification(`Plano exportado para: ${result.path}`, "success");
         } else {
-            throw new Error("Falha na exportação");
+            app.showNotification(`Falha na exportação: ${result?.error || 'Erro desconhecido'}`, "error");
         }
     } catch (error) {
         console.error("Erro ao exportar plano:", error);
-        app.showNotification("Não foi possível exportar o plano para Excel.", "error");
-        
-        // Restaurar botão em caso de erro
-        const exportBtn = document.getElementById('export-plan-excel-btn');
-        if (exportBtn) {
-            exportBtn.innerHTML = '<span class="material-icons-round">file_download</span> Exportar para Excel';
-            exportBtn.disabled = false;
-        }
+        app.showNotification("Erro ao exportar plano", "error");
+    } finally {
+        app.hideLoading();
     }
 };
 

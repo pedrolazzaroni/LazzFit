@@ -312,10 +312,15 @@ class LazzFitAPI:
         try:
             plan_id = plan_data.get('id')
             if not plan_id:
+                print("No plan ID provided for update")
                 return False
                 
+            # Log the incoming data for debugging
+            print(f"Updating plan {plan_id} with data: {json.dumps(plan_data, indent=2)}")
+            
+            # IMPORTANTE: Garantir conexões novas para cada operação
             # Update the base plan
-            self.db.update_training_plan(
+            success = self.db.update_training_plan(
                 plan_id,
                 plan_data['name'],
                 plan_data['goal'],
@@ -324,19 +329,27 @@ class LazzFitAPI:
                 plan_data['notes']
             )
             
+            if not success:
+                print(f"Failed to update base plan {plan_id}")
+                return False
+            
             # For each week in the plan data, update it
             for week in plan_data.get('weeks', []):
                 week_id = week.get('id')
                 if not week_id:
                     continue
                     
-                # Update week data
-                self.db.update_training_week(
+                # Update week data - conexão independente
+                week_success = self.db.update_training_week(
                     week_id,
                     week.get('focus', ''),
                     week.get('total_distance', 0),
                     week.get('notes', '')
                 )
+                
+                if not week_success:
+                    print(f"Warning: Failed to update week {week_id}")
+                    continue
                 
                 # Update the sessions for this week
                 for session in week.get('sessions', []):
@@ -349,8 +362,8 @@ class LazzFitAPI:
                     # Check if this is a training day
                     is_training_day = plan_data.get('trainingDays', {}).get(str(day), False)
                     
-                    # Update session data
-                    self.db.update_training_session(
+                    # Update session data - conexão independente
+                    session_success = self.db.update_training_session(
                         session_id,
                         session.get('workout_type', 'Descanso') if is_training_day else 'Descanso',
                         session.get('distance', 0) if is_training_day else 0,
@@ -360,7 +373,11 @@ class LazzFitAPI:
                         session.get('hr_zone', '') if is_training_day else '',
                         session.get('details', '') if is_training_day else ''
                     )
+                    
+                    if not session_success:
+                        print(f"Warning: Failed to update session {session_id}")
             
+            print(f"Plan {plan_id} updated successfully")
             return plan_id
         except Exception as e:
             print(f"Error updating complete training plan: {e}")
