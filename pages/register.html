@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Conta - LazzFit</title>
     <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/form-elements.css">
     <link rel="stylesheet" href="../css/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -22,32 +23,30 @@
                 </div>
                 
                 <form class="register-form">
-                    <div class="form-group">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="name" name="name" placeholder="Nome completo" required>
                         <label for="name">Nome completo</label>
-                        <input type="text" id="name" name="name" required>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-floating">
+                        <input type="email" class="form-control" id="email" name="email" placeholder="E-mail" required>
                         <label for="email">E-mail</label>
-                        <input type="email" id="email" name="email" required>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Senha" required>
                         <label for="password">Senha</label>
-                        <input type="password" id="password" name="password" required>
                         <small class="form-help">Mínimo de 8 caracteres, incluindo letras e números</small>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="confirm-password" name="confirm-password" placeholder="Confirmar senha" required>
                         <label for="confirm-password">Confirmar senha</label>
-                        <input type="password" id="confirm-password" name="confirm-password" required>
                     </div>
                     
-                    <div class="form-group form-checkbox">
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="terms" name="terms" required>
-                            <label for="terms">Li e concordo com os <a href="../pages/terms.html" target="_blank">Termos de Uso</a> e <a href="../pages/privacy.html" target="_blank">Política de Privacidade</a></label>
-                        </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
+                        <label class="form-check-label" for="terms">Li e concordo com os <a href="../pages/terms.html" target="_blank">Termos de Uso</a> e <a href="../pages/privacy.html" target="_blank">Política de Privacidade</a></label>
                     </div>
                     
                     <button type="submit" class="cta cta--primary" style="width: 100%;">Criar conta</button>

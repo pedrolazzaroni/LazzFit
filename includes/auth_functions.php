@@ -12,12 +12,6 @@ function startSessionIfNeeded() {
 
 /**
  * Registra um novo usuário no sistema
- * @param string $username Nome de usuário
- * @param string $email E-mail
- * @param string $password Senha (não criptografada)
- * @param string $firstName Nome
- * @param string $lastName Sobrenome
- * @return array Status do registro e mensagem
  */
 function registerUser($username, $email, $password, $firstName, $lastName) {
     $conn = getDbConnection();
@@ -43,17 +37,12 @@ function registerUser($username, $email, $password, $firstName, $lastName) {
         // Criar hash seguro da senha
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         
-        // Debug para verificar conexão e estrutura
-        error_log("Tentando inserir usuário no banco: " . DB_NAME);
+        // Logs para debug
+        error_log("Tentando registrar usuário: $username, $email");
         
-        // Inserir usuário - corrigindo consulta para corresponder à estrutura da tabela
-        $stmt = $conn->prepare("INSERT INTO users (
-                               username, email, password_hash, first_name, last_name, 
-                               created_at, updated_at
-                           ) VALUES (
-                               :username, :email, :password_hash, :first_name, :last_name,
-                               CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                           )");
+        // Inserir usuário
+        $stmt = $conn->prepare("INSERT INTO users (username, email, password_hash, first_name, last_name) 
+                               VALUES (:username, :email, :password_hash, :first_name, :last_name)");
         
         $stmt->bindParam(':username', $username);
         $stmt->bindParam(':email', $email);
@@ -62,20 +51,22 @@ function registerUser($username, $email, $password, $firstName, $lastName) {
         $stmt->bindParam(':last_name', $lastName);
         
         $stmt->execute();
-        
         $userId = $conn->lastInsertId();
-        error_log("Usuário inserido com ID: " . $userId);
         
-        // Criar preferências padrão do usuário - usando um bloco try/catch separado
-        try {
-            $prefStmt = $conn->prepare("INSERT INTO user_preferences (user_id) VALUES (:user_id)");
-            $prefStmt->bindParam(':user_id', $userId);
-            $prefStmt->execute();
-            error_log("Preferências do usuário criadas com sucesso");
-        } catch (PDOException $prefError) {
-            error_log("Erro ao criar preferências: " . $prefError->getMessage());
-            // Não interromper o fluxo se as preferências falharem
-        }
+        // Criar preferências padrão para o único usuário
+        $prefStmt = $conn->prepare("INSERT INTO user_preferences 
+                                  (user_id, distance_unit, weight_unit, pace_unit, theme_preference) 
+                                  VALUES (:user_id, 'km', 'kg', 'min/km', 'system')");
+        $prefStmt->bindParam(':user_id', $userId);
+        $prefStmt->execute();
+        
+        // Login automático após registro bem-sucedido
+        startSessionIfNeeded();
+        $_SESSION['user_id'] = $userId;
+        $_SESSION['username'] = $username;
+        $_SESSION['email'] = $email;
+        $_SESSION['logged_in'] = true;
+        $_SESSION['last_activity'] = time();
         
         $result['success'] = true;
         $result['message'] = "Usuário registrado com sucesso!";
