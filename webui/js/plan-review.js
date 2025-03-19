@@ -5,63 +5,125 @@
 
 // Etapa 4: Revisão final do plano
 trainingPlans._renderPlanReviewStep = function(container) {
+    const dayNames = [
+        "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", 
+        "Sexta-feira", "Sábado", "Domingo"
+    ];
+    
+    // Calcular totais do plano
+    const totalDistance = this.currentPlan.sessions
+        .filter(s => s.active || this.currentPlan.trainingDays[s.day])
+        .reduce((total, session) => total + (parseFloat(session.distance) || 0), 0);
+    
+    const totalDuration = this.currentPlan.sessions
+        .filter(s => s.active || this.currentPlan.trainingDays[s.day])
+        .reduce((total, session) => total + (parseInt(session.duration) || 0), 0);
+    
+    const totalHours = Math.floor(totalDuration / 60);
+    const totalMinutes = totalDuration % 60;
+    
+    // Criar HTML para cada sessão ativa
+    let sessionsHTML = '';
+    
+    for (let i = 1; i <= 7; i++) {
+        const isTrainingDay = this.currentPlan.trainingDays[i];
+        if (!isTrainingDay) continue;
+        
+        const session = this.currentPlan.sessions.find(s => s.day === i);
+        if (!session) continue;
+        
+        sessionsHTML += `
+            <div class="review-session">
+                <div class="day-column">
+                    <span>${dayNames[i-1].substring(0, 3)}</span>
+                </div>
+                <div class="session-details">
+                    <div class="session-main-info">
+                        <div class="workout-type">${session.workoutType || "Corrida"}</div>
+                        <div class="workout-metrics">${session.distance || 0} km | ${session.duration || 0} min</div>
+                    </div>
+                    <div class="session-secondary-info">
+                        <div>Intensidade: ${session.intensity || "N/A"}</div>
+                        ${session.paceTarget ? `<div>Ritmo: ${session.paceTarget}</div>` : ''}
+                        ${session.hrZone ? `<div>Zona FC: ${session.hrZone}</div>` : ''}
+                    </div>
+                    ${session.details ? `
+                        <div class="session-notes">${session.details}</div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
     container.innerHTML = `
         <div class="plan-step-content">
-            <h3>Revisar Plano de Treino</h3>
-            <p class="step-description">Verifique os detalhes do seu plano antes de salvar.</p>
+            <h3>Revisão do Plano</h3>
+            <p class="step-description">Revise os detalhes do seu plano de treino antes de finalizar.</p>
             
-            <div class="plan-summary">
-                <div class="summary-section">
-                    <h4>Informações Gerais</h4>
-                    <div class="summary-item">
-                        <span class="label">Nome do Plano:</span>
-                        <span class="value">${this.currentPlan.name}</span>
+            <div class="plan-review">
+                <div class="plan-summary">
+                    <h4>${this.currentPlan.name}</h4>
+                    <div class="plan-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Duração:</span>
+                            <span class="meta-value">${this.currentPlan.duration_weeks} semanas</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Nível:</span>
+                            <span class="meta-value">${this.currentPlan.level}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Objetivo:</span>
+                            <span class="meta-value">${this.currentPlan.goal || "Não especificado"}</span>
+                        </div>
                     </div>
-                    <div class="summary-item">
-                        <span class="label">Objetivo:</span>
-                        <span class="value">${this.currentPlan.goal || 'Não definido'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="label">Duração:</span>
-                        <span class="value">${this.currentPlan.duration_weeks} semanas</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="label">Nível:</span>
-                        <span class="value">${this.currentPlan.level}</span>
+                    
+                    <div class="plan-weekly-stats">
+                        <div class="weekly-stat">
+                            <span class="stat-value">${totalDistance.toFixed(1)} km</span>
+                            <span class="stat-label">Distância Semanal</span>
+                        </div>
+                        <div class="weekly-stat">
+                            <span class="stat-value">${totalHours}h ${totalMinutes}min</span>
+                            <span class="stat-label">Tempo Total Semanal</span>
+                        </div>
+                        <div class="weekly-stat">
+                            <span class="stat-value">${Object.values(this.currentPlan.trainingDays).filter(Boolean).length}</span>
+                            <span class="stat-label">Dias de Treino</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="summary-section">
-                    <h4>Dias de Treino Selecionados</h4>
-                    <div class="days-overview">
-                        ${this._renderTrainingDaysOverview()}
+                <div class="weekly-schedule">
+                    <h4>Programação Semanal</h4>
+                    <div class="sessions-list">
+                        ${sessionsHTML || '<p>Nenhuma sessão de treino configurada.</p>'}
                     </div>
                 </div>
                 
-                <div class="summary-section">
-                    <h4>Visualização do Calendário</h4>
-                    <div id="calendar-view" class="calendar-view">
-                        <!-- Calendar will be rendered here -->
+                ${this.currentPlan.notes ? `
+                    <div class="plan-notes">
+                        <h4>Notas</h4>
+                        <p>${this.currentPlan.notes}</p>
                     </div>
-                </div>
+                ` : ''}
             </div>
         </div>
         
         <div class="step-actions">
             <button class="btn" id="prev-step-btn">Voltar</button>
-            <button class="btn primary" id="save-plan-btn">Salvar Plano</button>
+            <button class="btn primary" id="finish-btn">
+                ${this.currentPlan.isEditing ? 'Atualizar Plano' : 'Finalizar Plano'}
+            </button>
         </div>
     `;
-    
-    // Renderizar calendário
-    this._renderCalendarPreview();
     
     // Configurar event listeners
     document.getElementById('prev-step-btn').addEventListener('click', () => {
         this.previousStep();
     });
     
-    document.getElementById('save-plan-btn').addEventListener('click', () => {
+    document.getElementById('finish-btn').addEventListener('click', () => {
         this.finishPlanCreation();
     });
 };
@@ -182,14 +244,37 @@ trainingPlans._savePlan = async function() {
 
 // Garantindo que finishPlanCreation também use a implementação unificada
 trainingPlans.finishPlanCreation = async function() {
-    // Validar e coletar dados do último passo
-    if (!this._validateCurrentStep()) {
+    try {
+        // Mostrar indicador de carregamento
+        const saveBtn = document.getElementById('finish-btn');
+        if (!saveBtn) return false;
+        
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<div class="loading-spinner"></div> Salvando...';
+        
+        // Usar implementação unificada de savePlan do módulo principal
+        const success = await this.savePlan();
+        
+        if (!success) {
+            // Restaurar botão em caso de erro
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return false;
+        }
+        
+        return success;
+    } catch (error) {
+        console.error("Erro ao finalizar plano:", error);
+        app.showNotification("Ocorreu um erro ao salvar o plano de treino.", "error");
+        
+        // Restaurar botão em caso de erro
+        const saveBtn = document.getElementById('finish-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = this.currentPlan.isEditing ? 'Atualizar Plano' : 'Finalizar Plano';
+        }
+        
         return false;
     }
-    
-    // Coletar dados do formulário atual
-    this._collectFormData();
-    
-    // Usar o método _savePlan que agora redireciona para o savePlan unificado
-    return await this._savePlan();
 };

@@ -1049,3 +1049,412 @@
         justify-content: flex-start;
     }
 }
+
+/* CSS para visualização e edição de planos de treino */
+
+/* Containers gerais */
+.training-plans-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Cards de planos */
+.plan-card {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+
+.plan-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.plan-card-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-name {
+    margin: 0;
+    font-size: 18px;
+    color: var(--primary);
+}
+
+.plan-level {
+    background: rgba(255, 103, 0, 0.2);
+    color: var(--primary);
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.plan-card-body {
+    padding: 15px;
+    flex: 1;
+}
+
+.plan-stats {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.plan-stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--light-gray);
+    font-size: 14px;
+}
+
+.plan-stat .material-icons-round {
+    font-size: 18px;
+    opacity: 0.7;
+}
+
+.plan-goal {
+    color: var(--light);
+    font-size: 14px;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+.plan-card-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Visualização de plano específico */
+.plan-view {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.plan-view-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.plan-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+}
+
+.plan-stat {
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.summary-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+}
+
+.summary-section h4 {
+    margin-top: 0;
+    color: var(--primary);
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.training-weeks-container {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+}
+
+.training-weeks-container h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--primary);
+}
+
+/* Acordeão para semanas de treino */
+.accordion {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.accordion-item {
+    background: rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.accordion-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.15);
+    transition: background 0.2s ease;
+}
+
+.accordion-header:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.week-number {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.week-focus {
+    color: var(--light-gray);
+    font-size: 14px;
+}
+
+.accordion-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.week-distance {
+    font-weight: 500;
+}
+
+.accordion-toggle {
+    background: none;
+    border: none;
+    color: var(--light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.accordion-item.active .accordion-toggle {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding: 0 15px;
+}
+
+.accordion-item.active .accordion-content {
+    max-height: 1000px; /* valor grande o suficiente para mostrar o conteúdo */
+    padding: 15px;
+}
+
+/* Visualização dos treinos na semana */
+.week-training-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.day-column {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.day-header {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.training-session {
+    padding: 12px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+}
+
+.training-session.rest {
+    background: rgba(0, 0, 0, 0.05);
+    align-items: center;
+    justify-content: center;
+    color: var(--light-gray);
+}
+
+.rest-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+}
+
+.rest-indicator .material-icons-round {
+    font-size: 32px;
+    opacity: 0.6;
+}
+
+.session-type {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary);
+}
+
+.session-details {
+    font-size: 13px;
+    color: var(--light-gray);
+    line-height: 1.5;
+    flex: 1;
+}
+
+.session-description {
+    margin-top: 10px;
+    font-size: 12px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    color: var(--light-gray);
+}
+
+.week-notes {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+}
+
+.week-notes h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary);
+    font-size: 16px;
+}
+
+.week-notes-content {
+    color: var(--light-gray);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Intensidades dos treinos */
+.training-session[data-intensity="baixa"] {
+    border-left: 3px solid #4CAF50; /* verde */
+}
+
+.training-session[data-intensity="média"] {
+    border-left: 3px solid #FFC107; /* amarelo */
+}
+
+.training-session[data-intensity="alta"] {
+    border-left: 3px solid #FF5722; /* laranja */
+}
+
+.training-session[data-intensity="muito alta"] {
+    border-left: 3px solid #F44336; /* vermelho */
+}
+
+/* Empty states */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    text-align: center;
+    color: var(--light-gray);
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+}
+
+.empty-state .material-icons-round {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+    max-width: 500px;
+}
+
+/* Responsividade */
+@media (max-width: 992px) {
+    .plan-view-actions {
+        flex-wrap: wrap;
+    }
+    
+    .plan-details {
+        flex-direction: column;
+    }
+    
+    .week-training-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .day-column {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .day-header {
+        text-align: left;
+    }
+}
+
+@media (max-width: 768px) {
+    .training-plans-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .plan-card-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .plan-card-actions .btn {
+        width: 100%;
+    }
+    
+    .accordion-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .accordion-summary {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

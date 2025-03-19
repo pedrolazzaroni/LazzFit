@@ -231,26 +231,8 @@ const trainingPlans = {
      * Dados de exemplo para desenvolvimento
      */
     _getMockPlans: function() {
-        return [
-            {
-                id: 1,
-                name: "Plano para 5K",
-                goal: "Completar 5K em menos de 30 minutos",
-                duration_weeks: 4,
-                level: "Iniciante",
-                created_at: "2023-05-01 10:00:00",
-                updated_at: "2023-05-15 14:30:00"
-            },
-            {
-                id: 2,
-                name: "Preparação para 10K",
-                goal: "Melhorar ritmo em corridas de 10K",
-                duration_weeks: 8,
-                level: "Intermediário",
-                created_at: "2023-06-01 09:15:00",
-                updated_at: "2023-06-10 16:45:00"
-            }
-        ];
+        console.warn("Mock data requested but mock generation has been removed");
+        return [];
     },
     
     /**
@@ -615,6 +597,8 @@ const trainingPlans = {
      * Salva o plano atual no banco de dados
      */
     savePlan: async function() {
+        console.log("Salvando plano...");
+        
         // Validar plano antes de salvar
         if (!this._validatePlan()) {
             return false;
@@ -625,6 +609,7 @@ const trainingPlans = {
             
             // Preparar dados para envio
             const planData = this._preparePlanDataForSave();
+            console.log("Dados do plano a serem salvos:", planData);
             
             let success = false;
             let planId = null;
@@ -635,18 +620,20 @@ const trainingPlans = {
             if (api.isPyWebView) {
                 try {
                     if (isEditing) {
-                        // Enviar plano completo para atualização - alterado para usar abordagem unificada
+                        // Enviar plano completo para atualização
                         planId = await window.pywebview.api.update_training_plan_complete(
                             planData
                         );
                         
+                        console.log("Resposta da API para atualização:", planId);
                         success = planId !== null && planId !== undefined;
                     } else {
-                        // Criar novo plano - usando abordagem unificada
+                        // Criar novo plano
                         planId = await window.pywebview.api.create_training_plan_complete(
                             planData
                         );
                         
+                        console.log("Resposta da API para criação:", planId);
                         success = planId !== null && planId !== undefined;
                     }
                 } catch (apiError) {
@@ -655,7 +642,7 @@ const trainingPlans = {
                 }
             } else {
                 // Modo de desenvolvimento - simulação
-                console.log("Simulando salvamento do plano:", planData);
+                console.log("SIMULAÇÃO: Salvando plano:", planData);
                 await new Promise(r => setTimeout(r, 1000));
                 success = true;
                 planId = this.currentPlan.id || 999;
@@ -734,13 +721,16 @@ const trainingPlans = {
         const planData = {
             name: this.currentPlan.name,
             goal: this.currentPlan.goal || "",
-            duration_weeks: this.currentPlan.duration_weeks,
+            duration_weeks: parseInt(this.currentPlan.duration_weeks),
             level: this.currentPlan.level || "Iniciante",
             notes: this.currentPlan.notes || "",
-            trainingDays: this.currentPlan.trainingDays, // Adicionar dias de treino
-            sessions: [], // Sessões simplificadas
-            weeks: []
+            trainingDays: {}
         };
+        
+        // Converter trainingDays para garantir formato correto
+        for (const [day, isSelected] of Object.entries(this.currentPlan.trainingDays)) {
+            planData.trainingDays[day] = Boolean(isSelected);
+        }
         
         // Se estivermos editando, mantemos o ID
         if (this.currentPlan.id !== undefined) {
@@ -748,71 +738,87 @@ const trainingPlans = {
         }
         
         // Preparar sessões para salvar
+        planData.sessions = [];
         this.currentPlan.sessions.forEach(session => {
-            if (this.currentPlan.trainingDays[session.day]) {
+            const isTrainingDay = this.currentPlan.trainingDays[session.day];
+            
+            if (isTrainingDay) {
                 planData.sessions.push({
                     day: session.day,
-                    workout_type: session.workoutType,
-                    distance: session.distance,
-                    duration: session.duration,
-                    intensity: session.intensity,
+                    workout_type: session.workoutType || "Corrida Leve",
+                    distance: parseFloat(session.distance) || 0,
+                    duration: parseInt(session.duration) || 0,
+                    intensity: session.intensity || "Baixa",
                     pace_target: session.paceTarget || "",
                     hr_zone: session.hrZone || "",
                     details: session.details || ""
                 });
+            } else {
+                // Dias de descanso também são incluídos para consistência
+                planData.sessions.push({
+                    day: session.day,
+                    workout_type: "Descanso",
+                    distance: 0,
+                    duration: 0,
+                    intensity: "Nenhuma",
+                    pace_target: "",
+                    hr_zone: "",
+                    details: ""
+                });
             }
         });
         
-        // Organizar sessões por semana
-        if (this.currentPlan.weeks && this.currentPlan.isEditing) {
-            // No modo de edição, preservar estrutura de semanas
-            planData.weeks = this.currentPlan.weeks.map(week => {
-                // Atualizar as sessões com base nos dados coletados
-                const updatedSessions = week.sessions.map(session => {
-                    // Encontrar os dados atualizados para esta sessão
-                    const updatedSession = this.currentPlan.sessions.find(s => s.day === session.day_of_week);
-                    
-                    if (updatedSession && this.currentPlan.trainingDays[session.day_of_week]) {
-                        // Dia de treino ativo - usar dados atualizados
-                        return {
-                            id: session.id,
-                            week_id: week.id,
-                            day_of_week: session.day_of_week,
-                            workout_type: updatedSession.workoutType || "Descanso",
-                            distance: updatedSession.distance || 0,
-                            duration: updatedSession.duration || 0,
-                            intensity: updatedSession.intensity || "Baixa",
-                            pace_target: updatedSession.paceTarget || "",
-                            hr_zone: updatedSession.hrZone || "",
-                            details: updatedSession.details || ""
-                        };
-                    } else {
-                        // Dia de treino inativo ou sem atualizações - manter como descanso
-                        return {
-                            id: session.id,
-                            week_id: week.id,
-                            day_of_week: session.day_of_week,
-                            workout_type: "Descanso",
-                            distance: 0,
-                            duration: 0,
-                            intensity: "Baixa",
-                            pace_target: "",
-                            hr_zone: "",
-                            details: ""
-                        };
-                    }
-                });
+        // Organizar semanas apenas se estivermos editando e houver dados existentes
+        if (this.currentPlan.weeks && this.currentPlan.weeks.length > 0) {
+            planData.weeks = [];
+            
+            // Copiar estrutura básica de semanas
+            for (let i = 0; i < this.currentPlan.weeks.length; i++) {
+                const originalWeek = this.currentPlan.weeks[i];
                 
-                return {
-                    id: week.id,
-                    week_number: week.week_number,
-                    focus: week.focus,
-                    notes: week.notes,
-                    sessions: updatedSessions,
-                    // Calcular distância total da semana
-                    total_distance: updatedSessions.reduce((total, s) => total + (parseFloat(s.distance) || 0), 0)
+                const week = {
+                    id: originalWeek.id,
+                    week_number: originalWeek.week_number,
+                    focus: originalWeek.focus || `Semana ${i+1}`,
+                    notes: originalWeek.notes || "",
+                    sessions: [],
+                    total_distance: 0
                 };
-            });
+                
+                // Para cada dia da semana, criar ou atualizar sessão
+                for (let day = 1; day <= 7; day++) {
+                    const isTrainingDay = planData.trainingDays[day];
+                    const sessionTemplate = planData.sessions.find(s => s.day === day);
+                    
+                    // Encontrar sessão existente para este dia nesta semana
+                    const existingSession = originalWeek.sessions.find(s => s.day_of_week === day);
+                    
+                    if (existingSession) {
+                        // Atualizar sessão existente
+                        const session = {
+                            id: existingSession.id,
+                            day_of_week: day,
+                            week_id: week.id,
+                            workout_type: isTrainingDay ? (sessionTemplate ? sessionTemplate.workout_type : "Corrida Leve") : "Descanso",
+                            distance: isTrainingDay ? (sessionTemplate ? sessionTemplate.distance : 0) : 0,
+                            duration: isTrainingDay ? (sessionTemplate ? sessionTemplate.duration : 0) : 0,
+                            intensity: isTrainingDay ? (sessionTemplate ? sessionTemplate.intensity : "Baixa") : "Nenhuma",
+                            pace_target: isTrainingDay ? (sessionTemplate ? sessionTemplate.pace_target : "") : "",
+                            hr_zone: isTrainingDay ? (sessionTemplate ? sessionTemplate.hr_zone : "") : "",
+                            details: isTrainingDay ? (sessionTemplate ? sessionTemplate.details : "") : ""
+                        };
+                        
+                        week.sessions.push(session);
+                        
+                        // Acumular distância para o total semanal
+                        if (isTrainingDay) {
+                            week.total_distance += parseFloat(session.distance) || 0;
+                        }
+                    }
+                }
+                
+                planData.weeks.push(week);
+            }
         }
         
         return planData;

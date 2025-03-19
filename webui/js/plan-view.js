@@ -45,48 +45,6 @@ trainingPlans.showViewPlanView = async function(planId) {
     }
 };
 
-// Função para gerar semanas de exemplo para desenvolvimento
-trainingPlans._generateMockWeeks = function(duration_weeks) {
-    const weeks = [];
-    
-    for (let week = 1; week <= duration_weeks; week++) {
-        const sessions = [];
-        
-        // Adicionar sessões para cada dia
-        for (let day = 1; day <= 7; day++) {
-            // Simular apenas alguns dias com treino
-            if ([1, 3, 5, 6].includes(day)) {
-                sessions.push({
-                    id: `week${week}-day${day}`,
-                    day_of_week: day,
-                    workout_type: this._getDefaultWorkoutType ? 
-                        this._getDefaultWorkoutType(day) : "Corrida Regular",
-                    distance: this._getDefaultDistance ? 
-                        this._getDefaultDistance(day) : 5.0,
-                    duration: this._getDefaultDuration ? 
-                        this._getDefaultDuration(day) : 30,
-                    intensity: this._getDefaultIntensity ? 
-                        this._getDefaultIntensity(day) : "Moderada",
-                    pace_target: "5:30",
-                    hr_zone: "Zona 2-3",
-                    details: "Descrição de exemplo para esta sessão de treino."
-                });
-            }
-        }
-        
-        weeks.push({
-            id: week,
-            week_number: week,
-            focus: `Semana ${week} - ${week % 4 === 0 ? "Recuperação" : "Desenvolvimento"}`,
-            total_distance: 30 + week * 2,
-            notes: `Notas da semana ${week}. Foco em ${week % 2 === 0 ? "velocidade" : "resistência"}.`,
-            sessions: sessions
-        });
-    }
-    
-    return weeks;
-};
-
 // Renderizar visualização de plano
 trainingPlans._renderPlanView = function(plan) {
     // Verificação de segurança para dados do plano
@@ -258,6 +216,11 @@ trainingPlans._renderWeekDays = function(sessions) {
 
 // Renderizar sessão de treino
 trainingPlans._renderTrainingSession = function(session) {
+    // Se o tipo de treino for descanso, mostrar como dia de descanso
+    if (!session.workout_type || session.workout_type === "Descanso") {
+        return this._renderRestDay();
+    }
+    
     const intensity = (session.intensity || "").toLowerCase();
     return `
         <div class="training-session" data-intensity="${intensity}">
@@ -265,7 +228,7 @@ trainingPlans._renderTrainingSession = function(session) {
             <div class="session-details">
                 <p>${session.distance || 0} km | ${session.duration || 0} min</p>
                 <p>Intensidade: ${session.intensity || "N/A"}</p>
-                ${session.pace_target ? `<p>Ritmo: ${session.pace_target} min/km</p>` : ''}
+                ${session.pace_target ? `<p>Ritmo: ${session.pace_target}</p>` : ''}
                 ${session.hr_zone ? `<p>Zona FC: ${session.hr_zone}</p>` : ''}
             </div>
             ${session.details ? `<div class="session-description">${session.details}</div>` : ''}

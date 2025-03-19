@@ -286,7 +286,10 @@ trainingPlans._saveSessionsStep = function() {
     
     // Adicionar dias inativos como sessões de descanso
     for (let i = 1; i <= 7; i++) {
-        if (!this.currentPlan.trainingDays[i]) {
+        // Verificar se este dia já foi processado como um dia ativo
+        const alreadyProcessed = this.currentPlan.sessions.some(s => s.day === i);
+        
+        if (!alreadyProcessed) {
             this.currentPlan.sessions.push({
                 day: i,
                 active: false,
@@ -303,4 +306,4 @@ trainingPlans._saveSessionsStep = function() {
     
     console.log("Sessões salvas:", this.currentPlan.sessions);
 };
-``` 
+````
