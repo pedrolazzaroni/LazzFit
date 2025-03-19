@@ -6,23 +6,33 @@
     <title>Criar Conta - LazzFit</title>
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/form-elements.css">
+    <link rel="stylesheet" href="../css/auth.css">
     <link rel="stylesheet" href="../css/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">
-        <div class="auth-image"></div>
+        <div class="auth-image register-image">
+            <div class="auth-image-content">
+                <h2>Comece sua jornada fitness</h2>
+                <p>Junte-se a milhares de corredores e transforme seu treinamento com o LazzFit - sua companhia perfeita para alcançar seus objetivos.</p>
+            </div>
+        </div>
         <div class="auth-form-container">
             <div class="auth-form">
                 <div class="auth-form-header">
                     <a href="../index.html" class="logo">
                         <h2>Lazz<span>Fit</span></h2>
                     </a>
-                    <h2>Comece sua jornada fitness</h2>
-                    <p>Crie sua conta para acessar todos os recursos</p>
+                    <h2>Crie sua conta</h2>
+                    <p>Comece a acompanhar seus treinos hoje mesmo</p>
                 </div>
                 
-                <form class="register-form">
+                <div class="form-message success">Conta criada com sucesso! Redirecionando...</div>
+                <div class="form-message error">Ocorreu um erro ao criar sua conta.</div>
+                
+                <form class="register-form" method="post" action="../auth/register.php">
                     <div class="form-floating">
                         <input type="text" class="form-control" id="name" name="name" placeholder="Nome completo" required>
                         <label for="name">Nome completo</label>
@@ -46,14 +56,29 @@
                     
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
-                        <label class="form-check-label" for="terms">Li e concordo com os <a href="../pages/terms.html" target="_blank">Termos de Uso</a> e <a href="../pages/privacy.html" target="_blank">Política de Privacidade</a></label>
+                        <label class="form-check-label" for="terms">Li e concordo com os <a href="../pages/terms.html" target="_blank">Termos de Uso</a> e a <a href="../pages/privacy.html" target="_blank">Política de Privacidade</a></label>
                     </div>
                     
-                    <button type="submit" class="cta cta--primary" style="width: 100%;">Criar conta</button>
+                    <button type="submit" class="cta cta--primary" style="width: 100%; margin-top: 20px;">Criar conta</button>
                 </form>
                 
+                <div class="social-login">
+                    <p>Ou cadastre-se com</p>
+                    <div class="social-buttons">
+                        <button class="social-btn google">
+                            <i class="fab fa-google"></i>
+                        </button>
+                        <button class="social-btn facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </button>
+                        <button class="social-btn apple">
+                            <i class="fab fa-apple"></i>
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="auth-form-footer">
-                    <p>Já tem uma conta? <a href="login.html">Entrar</a></p>
+                    <p>Já possui uma conta? <a href="login.html">Entrar</a></p>
                 </div>
             </div>
         </div>

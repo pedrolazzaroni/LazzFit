@@ -5,12 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrar - LazzFit</title>
     <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/form-elements.css">
+    <link rel="stylesheet" href="../css/auth.css">
     <link rel="stylesheet" href="../css/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">
-        <div class="auth-image"></div>
+        <div class="auth-image">
+            <div class="auth-image-content">
+                <h2>Bem-vindo ao LazzFit</h2>
+                <p>A melhor plataforma para corredores rastrearem seus treinos e alcançarem seus objetivos.</p>
+            </div>
+        </div>
         <div class="auth-form-container">
             <div class="auth-form">
                 <div class="auth-form-header">
@@ -21,27 +29,45 @@
                     <p>Entre na sua conta para continuar</p>
                 </div>
                 
-                <form class="login-form">
-                    <div class="form-group">
+                <div class="form-message success">Login realizado com sucesso!</div>
+                <div class="form-message error">Email ou senha incorretos.</div>
+                
+                <form class="login-form" method="post" action="../auth/login.php">
+                    <div class="form-floating">
+                        <input type="email" class="form-control" id="email" name="email" placeholder="nome@exemplo.com" required>
                         <label for="email">E-mail</label>
-                        <input type="email" id="email" name="email" required>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Sua senha" required>
                         <label for="password">Senha</label>
-                        <input type="password" id="password" name="password" required>
                     </div>
                     
                     <div class="form-group form-checkbox">
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="remember" name="remember">
-                            <label for="remember">Lembrar de mim</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                            <label class="form-check-label" for="remember">Lembrar de mim</label>
                         </div>
                         <a href="reset-password.html" class="forgot-password">Esqueceu a senha?</a>
                     </div>
                     
                     <button type="submit" class="cta cta--primary" style="width: 100%;">Entrar</button>
                 </form>
+                
+                <div class="social-login">
+                    <p>Ou entre com</p>
+                    <div class="social-buttons">
+                        <button class="social-btn google">
+                            <i class="fab fa-google"></i>
+                        </button>
+                        <button class="social-btn facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </button>
+                        <button class="social-btn apple">
+                            <i class="fab fa-apple"></i>
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="auth-form-footer">
                     <p>Ainda não tem uma conta? <a href="register.html">Registre-se</a></p>
