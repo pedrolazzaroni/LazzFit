@@ -168,6 +168,83 @@
     };
 
     /**
+     * Show the statistics view
+     */
+    App.prototype.showStatistics = function() {
+        console.log("🔄 Carregando visualização de estatísticas");
+        
+        // First ensure we have data
+        if (!this.dataLoaded || !this.runs || this.runs.length === 0) {
+            console.log("Tentando carregar dados antes de mostrar estatísticas...");
+            this.showLoading();
+            this.loadRunData()
+                .then(() => {
+                    this.hideLoading();
+                    this._renderStatisticsView();
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar dados para estatísticas:", error);
+                    this.hideLoading();
+                    this.showNotification("Não foi possível carregar seus dados de treino", "error");
+                    this._renderStatisticsView(); // Renderizar mesmo assim para mostrar mensagem de vazio
+                });
+        } else {
+            this._renderStatisticsView();
+        }
+    };
+
+    /**
+     * Private method to render the statistics view once data is loaded
+     */
+    App.prototype._renderStatisticsView = function() {
+        try {
+            // Clone the template
+            const template = document.getElementById('statistics-template');
+            if (!template) {
+                throw new Error("Template de estatísticas não encontrado");
+            }
+            
+            const statsView = document.importNode(template.content, true);
+            
+            // Insert into the DOM
+            this.viewContainer.innerHTML = '';
+            this.viewContainer.appendChild(statsView);
+            
+            // If no data, show empty state
+            if (!this.runs || this.runs.length === 0) {
+                this.showEmptyState('statistics');
+                return;
+            }
+            
+            // Set up tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and panes
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding pane
+                    tab.classList.add('active');
+                    const tabName = tab.dataset.tab;
+                    const pane = document.getElementById(`${tabName}-tab`);
+                    if (pane) {
+                        pane.classList.add('active');
+                    }
+                });
+            });
+            
+            // Create charts after a short delay
+            setTimeout(() => {
+                this._createStatisticsCharts();
+            }, 100);
+        } catch (error) {
+            console.error("Erro ao mostrar estatísticas:", error);
+            this.showNotification("Não foi possível carregar as estatísticas", "error");
+            this.navigate('dashboard');
+        }
+    };
+
+    /**
      * Helper method to dynamically load training plans module if not found
      * @private
      */

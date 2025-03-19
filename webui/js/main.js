@@ -1466,3 +1466,93 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+/**
+ * Main Application Entry Point
+ * Initializes the application and sets up global handlers
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("🚀 DOM carregado, inicializando aplicação...");
+    
+    // Create app instance
+    window.app = new AppClass();
+    
+    // Show a staged loading process
+    const loadingStages = [
+        { message: "Inicializando módulos...", progress: 15, delay: 300 },
+        { message: "Verificando componentes...", progress: 30, delay: 500 },
+        { message: "Preparando interface...", progress: 50, delay: 400 },
+        { message: "Carregando dados...", progress: 75, delay: 600 },
+        { message: "Finalizando...", progress: 90, delay: 300 }
+    ];
+    
+    // Start the loading sequence
+    let stageIndex = 0;
+    
+    function processNextStage() {
+        if (stageIndex >= loadingStages.length) {
+            // All stages complete, initialize the app
+            setTimeout(() => {
+                app.updateLoadingStatus("Pronto!", 100);
+                
+                // Small delay for visual completion before initializing
+                setTimeout(() => {
+                    app.init();
+                }, 300);
+            }, 200);
+            return;
+        }
+        
+        const stage = loadingStages[stageIndex];
+        app.updateLoadingStatus(stage.message, stage.progress);
+        stageIndex++;
+        
+        setTimeout(processNextStage, stage.delay);
+    }
+    
+    // Start the loading sequence
+    processNextStage();
+    
+    // Handle exit button
+    document.getElementById('exit-btn').addEventListener('click', function() {
+        if (window.pywebview && window.pywebview.api) {
+            // Try to close via PyWebView
+            window.pywebview.api.exit();
+        } else {
+            // For browser development, show a message
+            app.showNotification("Função de saída disponível apenas no aplicativo desktop", "info");
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        // Update any responsive UI components if needed
+    });
+    
+    // Handle tab visibility change
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            // App came back to foreground
+            console.log("Aplicação voltou ao primeiro plano");
+        } else {
+            // App went to background
+            console.log("Aplicação foi para segundo plano");
+        }
+    });
+    
+    // Prevent context menu in production
+    if (window.pywebview) {
+        document.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            return false;
+        });
+    }
+});
+
+// Add exit function to API if needed
+if (window.api && !api.exit) {
+    api.exit = function() {
+        console.log("Saindo da aplicação (simulado no navegador)");
+        app.showNotification("Função de saída simulada no navegador", "info");
+    };
+}

@@ -328,9 +328,12 @@ trainingPlans._createSessionsConfig = function() {
         };
         
         html += `
-            <div class="session-config" data-day="${i}">
+            <div class="session-config active-session" data-day="${i}">
                 <div class="session-header">
                     <h4>${dayNames[i-1]}</h4>
+                    <div class="session-toggle">
+                        <span class="material-icons-round">fitness_center</span>
+                    </div>
                 </div>
                 <div class="session-fields">
                     <div class="form-row">
@@ -387,13 +390,28 @@ trainingPlans._createSessionsConfig = function() {
         `;
     }
     
-    return html;
+    return html || `<div class="no-sessions-message">
+        <span class="material-icons-round">info</span>
+        <p>Nenhum dia de treino selecionado. Volte à etapa anterior para selecionar dias de treino.</p>
+    </div>`;
 };
 
 // Inicializa campos especiais do formulário de sessões
 trainingPlans._initSessionsFields = function() {
-    // Esta função pode ser usada para inicializar datepickers, máscaras de input, etc.
-    // Poderia ser implementada no futuro se necessário
+    // Adicionar listeners para os campos de sessão
+    document.querySelectorAll('.session-config').forEach(session => {
+        // Adicionar classe para indicar sessão ativa visualmente
+        session.classList.add('editable');
+        
+        // Click no cabeçalho da sessão para expandir/recolher (opcional)
+        session.querySelector('.session-header').addEventListener('click', (e) => {
+            if (e.target.closest('.session-toggle')) {
+                session.classList.toggle('expanded');
+            }
+        });
+    });
+    
+    console.log("Sessões de treino inicializadas: " + document.querySelectorAll('.session-config').length);
 };
 
 // Valida as sessões de treino

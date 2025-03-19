@@ -345,43 +345,18 @@ trainingPlans._formatDate = function(dateString) {
 // Função para editar plano de treino
 trainingPlans.showEditPlanView = async function(planId) {
     try {
-        console.log("Carregando plano para edição:", planId);
-        app.showLoading();
+        console.log("Redirecionando para a implementação principal de edição de plano:", planId);
         
-        // Primeiro, verificar se temos os dados do plano
-        let planData = null;
-        
-        // Verificação robusta da API PyWebView
-        if (window.pywebview && window.pywebview.api) {
-            try {
-                planData = await window.pywebview.api.get_training_plan(planId);
-            } catch (apiError) {
-                console.error("Erro ao buscar plano para edição:", apiError);
-                throw new Error("Não foi possível obter os dados do plano para edição");
-            }
+        // Redirecionamento para a implementação principal em training-plans.js
+        if (typeof this.editPlanImplementation === 'function') {
+            await this.editPlanImplementation(planId);
         } else {
-            throw new Error("API de backend não disponível");
+            // Manter compatibilidade com a implementação anterior
+            app.navigate('edit-plan', { planId });
         }
-        
-        if (!planData) {
-            throw new Error("Plano não encontrado");
-        }
-        
-        // Por enquanto, como a funcionalidade de edição está em desenvolvimento,
-        // apenas mostrar uma notificação e redirecionar para visualização
-        app.showNotification("Funcionalidade de edição em desenvolvimento. Em breve você poderá editar seus planos!", "info");
-        
-        // Esconder loading antes do redirecionamento
-        app.hideLoading();
-        
-        // Redirecionar para visualizar o plano após mostrar a mensagem
-        setTimeout(() => {
-            app.navigate('view-plan', { planId });
-        }, 1000);
     } catch (error) {
-        console.error("Erro ao tentar editar plano:", error);
-        app.showNotification("Erro ao carregar tela de edição do plano: " + (error.message || "Erro desconhecido"), "error");
-        app.hideLoading();
+        console.error("Erro ao redirecionar para edição do plano:", error);
+        app.showNotification("Erro ao iniciar edição do plano", "error");
         app.navigate('training-plans');
     }
 };

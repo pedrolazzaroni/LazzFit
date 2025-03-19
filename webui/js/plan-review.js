@@ -58,12 +58,11 @@ trainingPlans._renderPlanReviewStep = function(container) {
     
     // Configurar event listeners
     document.getElementById('prev-step-btn').addEventListener('click', () => {
-        this.currentStep = 2;
-        this._renderCreatePlanStep();
+        this.previousStep();
     });
     
     document.getElementById('save-plan-btn').addEventListener('click', () => {
-        this._savePlan();
+        this.finishPlanCreation();
     });
 };
 
@@ -150,48 +149,47 @@ trainingPlans._savePlan = async function() {
     try {
         // Mostrar indicador de carregamento
         const saveBtn = document.getElementById('save-plan-btn');
+        if (!saveBtn) return false;
+        
+        const originalText = saveBtn.textContent;
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<div class="loading-spinner"></div> Salvando...';
         
-        // Preparar dados do plano para salvar (format para API)
-        const planData = {
-            name: this.currentPlan.name,
-            goal: this.currentPlan.goal,
-            duration_weeks: this.currentPlan.duration_weeks,
-            level: this.currentPlan.level,
-            notes: this.currentPlan.notes,
-            // No backend vamos processar os dias e sessões
-            trainingDays: this.currentPlan.trainingDays,
-            sessions: this.currentPlan.sessions
-        };
+        // Usar implementação unificada de savePlan do módulo principal
+        const success = await this.savePlan();
         
-        let success = false;
-        
-        // Salvar via API ou simular para desenvolvimento
-        if (api.isPyWebView) {
-            success = await window.pywebview.api.create_training_plan(planData);
-        } else {
-            // Simulação para desenvolvimento
-            console.log("Simulando salvamento de plano:", planData);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            success = true;
-        }
-        
-        if (success) {
-            app.showNotification("Plano de treino criado com sucesso!", "success");
-            app.navigate('training-plans');
-        } else {
-            app.showNotification("Erro ao salvar plano de treino. Tente novamente.", "error");
+        if (!success) {
+            // Restaurar botão em caso de erro
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Salvar Plano';
+            saveBtn.textContent = originalText;
         }
+        
+        return success;
     } catch (error) {
         console.error("Erro ao salvar plano:", error);
         app.showNotification("Ocorreu um erro ao salvar o plano de treino.", "error");
         
-        // Restaurar botão
+        // Restaurar botão em caso de erro
         const saveBtn = document.getElementById('save-plan-btn');
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Salvar Plano';
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = this.currentPlan.isEditing ? 'Atualizar Plano' : 'Finalizar Plano';
+        }
+        
+        return false;
     }
+};
+
+// Garantindo que finishPlanCreation também use a implementação unificada
+trainingPlans.finishPlanCreation = async function() {
+    // Validar e coletar dados do último passo
+    if (!this._validateCurrentStep()) {
+        return false;
+    }
+    
+    // Coletar dados do formulário atual
+    this._collectFormData();
+    
+    // Usar o método _savePlan que agora redireciona para o savePlan unificado
+    return await this._savePlan();
 };

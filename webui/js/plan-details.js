@@ -7,212 +7,300 @@
 trainingPlans._renderTrainingDetailsStep = function(container) {
     container.innerHTML = `
         <div class="plan-step-content">
-            <h3>Detalhes dos Treinos</h3>
-            <p class="step-description">Configure os treinos para cada dia selecionado.</p>
+            <h3>Configuração das Sessões de Treino</h3>
+            <p class="step-description">Configure o tipo e os detalhes de cada sessão de treino semanal.</p>
             
-            <div class="week-selector">
-                <button id="prev-week" class="btn"><span class="material-icons-round">chevron_left</span></button>
-                <div id="current-week-display">Semana 1 de ${this.currentPlan.duration_weeks}</div>
-                <button id="next-week" class="btn"><span class="material-icons-round">chevron_right</span></button>
-            </div>
-            
-            <div id="training-schedule" class="training-schedule">
-                <!-- Weekly schedule will be rendered here -->
-            </div>
+            <form id="training-sessions-form" class="plan-form">
+                <div class="week-selector">
+                    <button type="button" id="prev-week-btn" class="week-nav-btn">
+                        <span class="material-icons-round">chevron_left</span>
+                    </button>
+                    <span id="current-week-display">Semana 1 de ${this.currentPlan.duration_weeks}</span>
+                    <button type="button" id="next-week-btn" class="week-nav-btn">
+                        <span class="material-icons-round">chevron_right</span>
+                    </button>
+                </div>
+                
+                <div class="sessions-container">
+                    ${this._createSessionsConfig()}
+                </div>
+                
+                <div class="form-info">
+                    <p>Configure os detalhes de cada sessão de treino. As configurações serão aplicadas a todas as semanas do plano.</p>
+                </div>
+            </form>
         </div>
         
         <div class="step-actions">
             <button class="btn" id="prev-step-btn">Voltar</button>
-            <button class="btn primary" id="next-step-btn">Revisar Plano</button>
+            <button class="btn primary" id="next-step-btn">Próximo</button>
         </div>
     `;
     
-    // Inicializar com semana 1
-    this._renderWeekSchedule(1);
-    
     // Configurar event listeners
-    document.getElementById('prev-week').addEventListener('click', () => {
-        const currentWeek = parseInt(document.getElementById('current-week-display').textContent.match(/\d+/)[0]);
-        if (currentWeek > 1) {
-            this._renderWeekSchedule(currentWeek - 1);
-        }
-    });
-    
-    document.getElementById('next-week').addEventListener('click', () => {
-        const currentWeek = parseInt(document.getElementById('current-week-display').textContent.match(/\d+/)[0]);
-        if (currentWeek < this.currentPlan.duration_weeks) {
-            this._renderWeekSchedule(currentWeek + 1);
-        }
-    });
-    
     document.getElementById('prev-step-btn').addEventListener('click', () => {
-        this.currentStep = 1;
-        this._renderCreatePlanStep();
+        this.previousStep();
     });
     
     document.getElementById('next-step-btn').addEventListener('click', () => {
+        if (!this._validateSessionsStep()) return;
+        
+        // Salvar dados do formulário
+        this._saveSessionsStep();
+        
+        // Ir para próxima etapa
         this.currentStep = 3;
         this._renderCreatePlanStep();
     });
+    
+    // Inicializar campos de sessão
+    this._initSessionsFields();
+    
+    // Configurar navegação de semanas (para referência visual apenas)
+    let currentWeek = 1;
+    const currentWeekDisplay = document.getElementById('current-week-display');
+    const prevWeekBtn = document.getElementById('prev-week-btn');
+    const nextWeekBtn = document.getElementById('next-week-btn');
+    
+    if (prevWeekBtn && nextWeekBtn && currentWeekDisplay) {
+        prevWeekBtn.disabled = currentWeek <= 1;
+        nextWeekBtn.disabled = currentWeek >= this.currentPlan.duration_weeks;
+        
+        prevWeekBtn.addEventListener('click', () => {
+            if (currentWeek > 1) {
+                currentWeek--;
+                currentWeekDisplay.textContent = `Semana ${currentWeek} de ${this.currentPlan.duration_weeks}`;
+                prevWeekBtn.disabled = currentWeek <= 1;
+                nextWeekBtn.disabled = false;
+            }
+        });
+        
+        nextWeekBtn.addEventListener('click', () => {
+            if (currentWeek < this.currentPlan.duration_weeks) {
+                currentWeek++;
+                currentWeekDisplay.textContent = `Semana ${currentWeek} de ${this.currentPlan.duration_weeks}`;
+                nextWeekBtn.disabled = currentWeek >= this.currentPlan.duration_weeks;
+                prevWeekBtn.disabled = false;
+            }
+        });
+    }
 };
 
-// Renderiza o cronograma da semana
-trainingPlans._renderWeekSchedule = function(weekNumber) {
-    // Atualizar display da semana
-    document.getElementById('current-week-display').textContent = `Semana ${weekNumber} de ${this.currentPlan.duration_weeks}`;
-    
-    // Habilitar/desabilitar botões de navegação
-    document.getElementById('prev-week').disabled = weekNumber === 1;
-    document.getElementById('next-week').disabled = weekNumber === this.currentPlan.duration_weeks;
-    
-    const daysOfWeek = [
-        { id: 1, name: 'Segunda-feira', shortName: 'Seg' },
-        { id: 2, name: 'Terça-feira', shortName: 'Ter' },
-        { id: 3, name: 'Quarta-feira', shortName: 'Qua' },
-        { id: 4, name: 'Quinta-feira', shortName: 'Qui' },
-        { id: 5, name: 'Sexta-feira', shortName: 'Sex' },
-        { id: 6, name: 'Sábado', shortName: 'Sáb' },
-        { id: 7, name: 'Domingo', shortName: 'Dom' }
+// Cria a configuração das sessões com base nos dias selecionados
+trainingPlans._createSessionsConfig = function() {
+    const dayNames = [
+        "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", 
+        "Sexta-feira", "Sábado", "Domingo"
     ];
     
-    const scheduleContainer = document.getElementById('training-schedule');
-    scheduleContainer.innerHTML = '';
+    let html = '';
     
-    // Criar um card para cada dia da semana
-    daysOfWeek.forEach(dayInfo => {
-        const day = dayInfo.id;
-        const isTrainingDay = this.currentPlan.trainingDays[day];
+    // Para cada dia da semana
+    for (let i = 1; i <= 7; i++) {
+        // Verificar se o dia está selecionado para treino
+        const isActiveDay = this.currentPlan.trainingDays[i] || false;
         
-        // Encontrar a sessão para este dia e semana
-        const session = this.currentPlan.sessions.find(s => s.week === weekNumber && s.day === day);
+        // Sempre renderizar o dia, mas com estilo diferente se não for dia de treino
+        const sessionClass = isActiveDay ? 'session-config active-session' : 'session-config inactive-session';
+        const sessionStatus = isActiveDay ? 'Dia de treino' : 'Dia de descanso';
         
-        const dayCard = document.createElement('div');
-        dayCard.className = `day-card ${isTrainingDay ? 'training-day' : 'rest-day'}`;
+        // Buscar dados existentes desta sessão, se houver
+        const sessionData = this.currentPlan.sessions.find(s => s.day === i) || {
+            workoutType: isActiveDay ? "Corrida Leve" : "Descanso",
+            distance: isActiveDay ? 5 : 0,
+            duration: isActiveDay ? 30 : 0,
+            intensity: isActiveDay ? "Baixa" : "Nenhuma",
+            paceTarget: "",
+            hrZone: "",
+            details: ""
+        };
         
-        if (isTrainingDay && session) {
-            dayCard.innerHTML = `
-                <div class="day-header">
-                    <h4>${dayInfo.name}</h4>
-                </div>
-                <div class="session-details">
-                    <div class="session-type">${session.workoutType}</div>
-                    <div class="session-stats">
-                        <div class="stat">
-                            <span class="material-icons-round">straighten</span>
-                            <span>${session.distance} km</span>
-                        </div>
-                        <div class="stat">
-                            <span class="material-icons-round">timer</span>
-                            <span>${session.duration} min</span>
-                        </div>
-                    </div>
-                    <div class="session-intensity ${session.intensity.toLowerCase()}">${session.intensity}</div>
-                    <div class="session-description">${session.description || 'Sem descrição adicional'}</div>
-                </div>
-                <div class="day-actions">
-                    <button class="btn edit-session-btn" data-week="${weekNumber}" data-day="${day}">
-                        <span class="material-icons-round">edit</span>
-                        Editar
-                    </button>
-                </div>
-            `;
-            
-            // Adicionar event listener para edição da sessão
-            dayCard.querySelector('.edit-session-btn').addEventListener('click', () => {
-                this._showEditSessionDialog(weekNumber, day, session);
-            });
-        } else {
-            dayCard.innerHTML = `
-                <div class="day-header">
-                    <h4>${dayInfo.name}</h4>
-                </div>
-                <div class="rest-indicator">
-                    <span class="material-icons-round">hotel</span>
-                    <span>Descanso</span>
-                </div>
-            `;
-        }
-        
-        scheduleContainer.appendChild(dayCard);
-    });
-};
-
-// Mostra diálogo para edição de uma sessão de treino
-trainingPlans._showEditSessionDialog = function(week, day, session) {
-    const dayNames = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-    const dayName = dayNames[day - 1];
-    
-    const dialogContent = document.createElement('div');
-    dialogContent.className = 'edit-session-dialog';
-    dialogContent.innerHTML = `
-        <h3>Editar Treino - ${dayName}</h3>
-        <form id="edit-session-form">
-            <div class="form-group">
-                <label for="session-type">Tipo de Treino</label>
-                <select id="session-type">
-                    <option value="Corrida Leve" ${session.workoutType === 'Corrida Leve' ? 'selected' : ''}>Corrida Leve</option>
-                    <option value="Corrida Regular" ${session.workoutType === 'Corrida Regular' ? 'selected' : ''}>Corrida Regular</option>
-                    <option value="Corrida Longa" ${session.workoutType === 'Corrida Longa' ? 'selected' : ''}>Corrida Longa</option>
-                    <option value="Intervalado" ${session.workoutType === 'Intervalado' ? 'selected' : ''}>Intervalado</option>
-                    <option value="Tempo" ${session.workoutType === 'Tempo' ? 'selected' : ''}>Tempo</option>
-                    <option value="Fartlek" ${session.workoutType === 'Fartlek' ? 'selected' : ''}>Fartlek</option>
-                    <option value="Recuperação" ${session.workoutType === 'Recuperação' ? 'selected' : ''}>Recuperação</option>
-                    <option value="Outro" ${session.workoutType === 'Outro' ? 'selected' : ''}>Outro</option>
-                </select>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="session-distance">Distância (km)</label>
-                    <input type="number" id="session-distance" value="${session.distance}" min="0" step="0.1">
+        html += `
+            <div class="${sessionClass}" data-day="${i}">
+                <div class="session-header">
+                    <h4>${dayNames[i-1]}</h4>
+                    <div class="session-status">${sessionStatus}</div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="session-duration">Duração (min)</label>
-                    <input type="number" id="session-duration" value="${session.duration}" min="0">
+                ${isActiveDay ? `
+                <div class="session-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="workout-type-${i}">Tipo de Treino</label>
+                            <select id="workout-type-${i}" class="workout-type">
+                                <option value="Corrida Leve" ${sessionData.workoutType === "Corrida Leve" ? "selected" : ""}>Corrida Leve</option>
+                                <option value="Treino de Ritmo" ${sessionData.workoutType === "Treino de Ritmo" ? "selected" : ""}>Treino de Ritmo</option>
+                                <option value="Intervalado" ${sessionData.workoutType === "Intervalado" ? "selected" : ""}>Intervalado</option>
+                                <option value="Long Run" ${sessionData.workoutType === "Long Run" ? "selected" : ""}>Long Run</option>
+                                <option value="Recuperação" ${sessionData.workoutType === "Recuperação" ? "selected" : ""}>Recuperação</option>
+                                <option value="Fartlek" ${sessionData.workoutType === "Fartlek" ? "selected" : ""}>Fartlek</option>
+                                <option value="Cross Training" ${sessionData.workoutType === "Cross Training" ? "selected" : ""}>Cross Training</option>
+                                <option value="Outro" ${sessionData.workoutType === "Outro" ? "selected" : ""}>Outro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="workout-intensity-${i}">Intensidade</label>
+                            <select id="workout-intensity-${i}" class="workout-intensity">
+                                <option value="Muito Baixa" ${sessionData.intensity === "Muito Baixa" ? "selected" : ""}>Muito Baixa</option>
+                                <option value="Baixa" ${sessionData.intensity === "Baixa" ? "selected" : ""}>Baixa</option>
+                                <option value="Média" ${sessionData.intensity === "Média" ? "selected" : ""}>Média</option>
+                                <option value="Alta" ${sessionData.intensity === "Alta" ? "selected" : ""}>Alta</option>
+                                <option value="Muito Alta" ${sessionData.intensity === "Muito Alta" ? "selected" : ""}>Muito Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="workout-distance-${i}">Distância (km)</label>
+                            <input type="number" id="workout-distance-${i}" class="workout-distance" value="${sessionData.distance}" min="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="workout-duration-${i}">Duração (min)</label>
+                            <input type="number" id="workout-duration-${i}" class="workout-duration" value="${sessionData.duration}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="workout-pace-${i}">Ritmo Alvo</label>
+                            <input type="text" id="workout-pace-${i}" class="workout-pace" value="${sessionData.paceTarget}" placeholder="ex: 5:30/km">
+                        </div>
+                        <div class="form-group">
+                            <label for="workout-hr-${i}">Zona de FC</label>
+                            <input type="text" id="workout-hr-${i}" class="workout-hr-zone" value="${sessionData.hrZone}" placeholder="ex: Z2, 140-150 BPM">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="workout-details-${i}">Detalhes</label>
+                        <textarea id="workout-details-${i}" class="workout-details" rows="2" placeholder="Instruções específicas para este treino">${sessionData.details}</textarea>
+                    </div>
                 </div>
+                ` : `<div class="rest-day-message">
+                    <span class="material-icons-round">hotel</span>
+                    <p>Descanso</p>
+                    <button type="button" class="btn small enable-training-day" data-day="${i}">Ativar como dia de treino</button>
+                </div>`}
             </div>
-            
-            <div class="form-group">
-                <label for="session-intensity">Intensidade</label>
-                <select id="session-intensity">
-                    <option value="Leve" ${session.intensity === 'Leve' ? 'selected' : ''}>Leve</option>
-                    <option value="Moderada" ${session.intensity === 'Moderada' ? 'selected' : ''}>Moderada</option>
-                    <option value="Alta" ${session.intensity === 'Alta' ? 'selected' : ''}>Alta</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="session-description">Descrição/Notas</label>
-                <textarea id="session-description" rows="3">${session.description || ''}</textarea>
-            </div>
-        </form>
-    `;
+        `;
+    }
     
-    // Mostrar diálogo
-    const dialog = components.showDialog(
-        `Editar Treino - Semana ${week}`,
-        dialogContent,
-        [
-            { text: 'Cancelar', primary: false },
-            { 
-                text: 'Salvar', 
-                primary: true,
-                onClick: () => {
-                    // Atualizar dados da sessão
-                    session.workoutType = document.getElementById('session-type').value;
-                    session.distance = parseFloat(document.getElementById('session-distance').value);
-                    session.duration = parseInt(document.getElementById('session-duration').value);
-                    session.intensity = document.getElementById('session-intensity').value;
-                    session.description = document.getElementById('session-description').value;
-                    
-                    // Atualizar a visualização
-                    this._renderWeekSchedule(week);
-                    
-                    // Mostrar notificação
-                    app.showNotification('Sessão de treino atualizada', 'success');
-                }
-            }
-        ]
-    );
+    return html || `<div class="no-sessions-message">
+        <span class="material-icons-round">info</span>
+        <p>Nenhum dia de treino selecionado. Volte à etapa anterior para selecionar dias de treino.</p>
+    </div>`;
 };
+
+// Inicializa campos especiais do formulário de sessões
+trainingPlans._initSessionsFields = function() {
+    // Adicionar listeners para os campos de sessão
+    document.querySelectorAll('.session-config').forEach(session => {
+        // Adicionar botões para ativar dias inativos
+        const enableBtn = session.querySelector('.enable-training-day');
+        if (enableBtn) {
+            enableBtn.addEventListener('click', () => {
+                const day = parseInt(enableBtn.dataset.day);
+                if (!isNaN(day)) {
+                    // Atualizar estado do dia de treino
+                    this.currentPlan.trainingDays[day] = true;
+                    
+                    // Recriar a interface para refletir as mudanças
+                    const container = document.querySelector('#training-sessions-form .sessions-container');
+                    if (container) {
+                        container.innerHTML = this._createSessionsConfig();
+                        this._initSessionsFields(); // Reinicializar eventos
+                    }
+                }
+            });
+        }
+    });
+    
+    console.log("Sessões de treino inicializadas: " + document.querySelectorAll('.session-config.active-session').length);
+};
+
+// Valida as sessões de treino
+trainingPlans._validateSessionsStep = function() {
+    // Verificar dados básicos de cada sessão
+    const sessions = document.querySelectorAll('.session-config.active-session');
+    let isValid = true;
+    
+    sessions.forEach(session => {
+        const workoutType = session.querySelector('.workout-type');
+        const distance = session.querySelector('.workout-distance');
+        const duration = session.querySelector('.workout-duration');
+        
+        if (!workoutType || !workoutType.value) {
+            app.showNotification("Selecione um tipo de treino para todas as sessões", "error");
+            isValid = false;
+            return;
+        }
+        
+        if (distance && (isNaN(parseFloat(distance.value)) || parseFloat(distance.value) < 0)) {
+            app.showNotification("Informe uma distância válida para todas as sessões", "error");
+            isValid = false;
+            return;
+        }
+        
+        if (duration && (isNaN(parseInt(duration.value)) || parseInt(duration.value) < 0)) {
+            app.showNotification("Informe uma duração válida para todas as sessões", "error");
+            isValid = false;
+            return;
+        }
+    });
+    
+    return isValid;
+};
+
+// Salva os dados das sessões
+trainingPlans._saveSessionsStep = function() {
+    const activeSessions = document.querySelectorAll('.session-config.active-session');
+    
+    // Limpar sessões anteriores e adicionar as atualizadas
+    this.currentPlan.sessions = [];
+    
+    // Processar sessões ativas
+    activeSessions.forEach(session => {
+        const dayIndex = parseInt(session.dataset.day);
+        if (isNaN(dayIndex)) return;
+        
+        // Obter elementos do formulário para esta sessão
+        const workoutType = session.querySelector('.workout-type');
+        const distance = session.querySelector('.workout-distance');
+        const duration = session.querySelector('.workout-duration');
+        const intensity = session.querySelector('.workout-intensity');
+        const paceTarget = session.querySelector('.workout-pace');
+        const hrZone = session.querySelector('.workout-hr-zone');
+        const details = session.querySelector('.workout-details');
+        
+        // Criar objeto de sessão com os dados do formulário
+        this.currentPlan.sessions.push({
+            day: dayIndex,
+            active: true,
+            workoutType: workoutType ? workoutType.value : "Corrida Leve",
+            distance: distance ? parseFloat(distance.value) || 0 : 0,
+            duration: duration ? parseInt(duration.value) || 0 : 0,
+            intensity: intensity ? intensity.value : "Baixa",
+            paceTarget: paceTarget ? paceTarget.value : "",
+            hrZone: hrZone ? hrZone.value : "",
+            details: details ? details.value : ""
+        });
+    });
+    
+    // Adicionar dias inativos como sessões de descanso
+    for (let i = 1; i <= 7; i++) {
+        if (!this.currentPlan.trainingDays[i]) {
+            this.currentPlan.sessions.push({
+                day: i,
+                active: false,
+                workoutType: "Descanso",
+                distance: 0,
+                duration: 0,
+                intensity: "Nenhuma",
+                paceTarget: "",
+                hrZone: "",
+                details: ""
+            });
+        }
+    }
+    
+    console.log("Sessões salvas:", this.currentPlan.sessions);
+};
+``` 
