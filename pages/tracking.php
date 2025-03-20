@@ -33,7 +33,8 @@ function getWorkoutsForPeriod($userId, $startDate, $endDate) {
     try {
         $stmt = $conn->prepare("SELECT w.*, DATE_FORMAT(w.workout_date, '%Y-%m-%d') as workout_date_formatted,
                                 ROUND(TIME_TO_SEC(w.duration)/60, 1) as duration_minutes,
-                                TIME_FORMAT(w.duration, '%H:%i:%s') as duration_formatted
+                                TIME_FORMAT(w.duration, '%H:%i:%s') as duration_formatted,
+                                COALESCE(w.workout_type, 'regular') as workout_type
                                 FROM workouts w
                                 WHERE w.user_id = :user_id
                                 AND w.workout_date BETWEEN :start_date AND :end_date
@@ -62,7 +63,9 @@ function getWorkoutsForPeriod($userId, $startDate, $endDate) {
             $workout['date_formatted'] = $date->format('d/m/Y');
             
             // Determinar ícone para tipo de treino
-            switch ($workout['workout_type']) {
+            $workoutType = $workout['workout_type'];
+            
+            switch ($workoutType) {
                 case 'interval':
                     $workout['type_icon'] = 'fa-stopwatch';
                     $workout['type_label'] = 'Treino Intervalado';
