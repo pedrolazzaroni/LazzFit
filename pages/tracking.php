@@ -15,6 +15,10 @@ if (!$user) {
     exit;
 }
 
+// Define active page for the sidebar
+$activePage = 'tracking';
+$isSubDirectory = true;
+
 // Definir período padrão (últimos 30 dias)
 $periodStart = date('Y-m-d', strtotime('-30 days'));
 $periodEnd = date('Y-m-d');
@@ -298,289 +302,275 @@ if (isset($_GET['period'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acompanhamento - LazzFit</title>
-    <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/dashboard.css">
-    <link rel="stylesheet" href="../css/tracking.css">
-    <link rel="stylesheet" href="../css/form-elements.css">
-    <link rel="stylesheet" href="../css/responsive.css">
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração personalizada do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF8C00',
+                        'primary-dark': '#FF6000',
+                        secondary: '#2563EB',
+                        dark: '#333333',
+                        gray: '#6B7280',
+                        success: '#34C759',
+                        danger: '#FF3B30',
+                        warning: '#FF9500',
+                        info: '#0A84FF',
+                        light: '#F2F2F7'
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="dashboard-body">
-    <div class="dashboard-container">
-        <!-- Sidebar Navigation -->
-        <aside class="dashboard-sidebar">
-            <div class="sidebar-header">
-                <a href="../index.html" class="logo">
-                    <h2>Lazz<span>Fit</span></h2>
-                </a>
-                <button class="sidebar-close" id="sidebar-close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <div class="user-profile">
-                <div class="user-avatar">
-                    <?php if (!empty($user['profile_image'])): ?>
-                        <img src="<?php echo htmlspecialchars($user['profile_image']); ?>" alt="Perfil do usuário">
-                    <?php else: ?>
-                        <img src="../images/default-avatar.png" alt="Perfil do usuário">
-                    <?php endif; ?>
-                </div>
-                <div class="user-info">
-                    <h3 class="user-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h3>
-                    <p class="user-level"><?php echo htmlspecialchars($user['runner_level']); ?></p>
-                </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="../dashboard.php"><i class="fas fa-home"></i> Visão Geral</a></li>
-                    <li><a href="workout-planner.php"><i class="fas fa-running"></i> Planejar Treinos</a></li>
-                    <li><a href="plans.php"><i class="fas fa-calendar-alt"></i> Meus Planos</a></li>
-                    <li class="active"><a href="tracking.php"><i class="fas fa-chart-line"></i> Acompanhamento</a></li>
-                    <li><a href="profile.php"><i class="fas fa-user-cog"></i> Perfil</a></li>
-                </ul>
-            </nav>
-
-            <div class="sidebar-footer">
-                <a href="../auth/logout.php" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</a>
-            </div>
-        </aside>
+<body class="bg-light font-sans">
+    <div class="flex min-h-screen">
+        <!-- Include Sidebar Component -->
+        <?php include_once '../includes/components/sidebar.php'; ?>
 
         <!-- Main Content -->
-        <main class="dashboard-main">
-            <header class="dashboard-header">
-                <button class="sidebar-toggle" id="sidebar-toggle">
+        <main class="lg:ml-72 w-full">
+            <header class="bg-white p-4 flex items-center justify-between shadow z-10 sticky top-0">
+                <button class="lg:hidden text-xl text-gray p-2" id="sidebar-toggle">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h1>Acompanhamento</h1>
-                <div class="header-actions">
-                    <a href="workout-planner.php" class="cta cta--primary"><i class="fas fa-plus"></i> Novo Treino</a>
+                <h1 class="text-xl font-bold">Acompanhamento</h1>
+                <div>
+                    <a href="workout-planner.php" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center transition-colors">
+                        <i class="fas fa-plus mr-2"></i> Novo Treino
+                    </a>
                 </div>
             </header>
 
-            <div class="dashboard-content">
+            <div class="p-6">
                 <!-- Period Selector -->
-                <section class="tracking-controls">
-                    <div class="period-selector">
-                        <h3>Período</h3>
-                        <div class="period-options">
+                <section class="bg-white rounded-lg shadow p-6 mb-6">
+                    <div>
+                        <h3 class="text-lg font-medium mb-4">Período</h3>
+                        <div class="flex flex-wrap gap-2 mb-6">
                             <?php foreach ($periodOptions as $key => $label): ?>
-                                <button class="period-option <?php echo $currentPeriod === $key ? 'active' : ''; ?>" data-period="<?php echo $key; ?>">
+                                <button class="px-4 py-2 rounded-full <?php echo $currentPeriod === $key ? 'bg-primary text-white' : 'bg-gray-100 text-gray hover:bg-gray-200'; ?>" 
+                                        data-period="<?php echo $key; ?>">
                                     <?php echo $label; ?>
                                 </button>
                             <?php endforeach; ?>
                         </div>
                         
-                        <div class="custom-period" id="custom-period-container" style="<?php echo $currentPeriod === 'custom' ? '' : 'display: none;'; ?>">
+                        <div id="custom-period-container" class="<?php echo $currentPeriod === 'custom' ? 'block' : 'hidden'; ?> border-t border-gray-100 pt-4">
                             <form id="custom-period-form" action="tracking.php" method="GET">
                                 <input type="hidden" name="period" value="custom">
-                                <div class="date-range-picker">
-                                    <div class="form-floating">
-                                        <input type="date" class="form-control" id="period-start" name="period_start" value="<?php echo $periodStart; ?>" required>
-                                        <label for="period-start">Data inicial</label>
+                                <div class="flex flex-wrap items-center gap-4">
+                                    <div class="relative">
+                                        <input type="date" class="border rounded-lg p-3 pl-3 pt-5 w-full" 
+                                               id="period-start" name="period_start" value="<?php echo $periodStart; ?>" required>
+                                        <label for="period-start" class="absolute text-xs text-gray top-1.5 left-3">Data inicial</label>
                                     </div>
-                                    <span class="date-separator">até</span>
-                                    <div class="form-floating">
-                                        <input type="date" class="form-control" id="period-end" name="period_end" value="<?php echo $periodEnd; ?>" required>
-                                        <label for="period-end">Data final</label>
+                                    <span class="text-gray">até</span>
+                                    <div class="relative">
+                                        <input type="date" class="border rounded-lg p-3 pl-3 pt-5 w-full" 
+                                               id="period-end" name="period_end" value="<?php echo $periodEnd; ?>" required>
+                                        <label for="period-end" class="absolute text-xs text-gray top-1.5 left-3">Data final</label>
                                     </div>
-                                    <button type="submit" class="cta cta--secondary">Aplicar</button>
+                                    <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white rounded-lg px-4 py-2">Aplicar</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </section>
                 
-                <!-- Period Stats -->
-                <section class="content-section period-stats">
-                    <h2 class="section-title">Resumo do Período</h2>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-shoe-prints"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>Total de Treinos</h3>
-                                <p class="stat-value"><?php echo $periodStats['total_workouts']; ?></p>
-                                <p class="stat-label">Treinos registrados</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-road"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>Distância Total</h3>
-                                <p class="stat-value"><?php echo $periodStats['total_distance']; ?> km</p>
-                                <p class="stat-label"><?php echo round($periodStats['avg_distance'], 1); ?> km por treino</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>Tempo Total</h3>
-                                <p class="stat-value"><?php echo $periodStats['duration_formatted']; ?></p>
-                                <p class="stat-label">Em movimento</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>Ritmo Médio</h3>
-                                <p class="stat-value"><?php echo $periodStats['pace_formatted']; ?></p>
-                                <p class="stat-label">Por quilômetro</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="personal-records">
-                        <h3>Destaques do Período</h3>
-                        
-                        <div class="records-grid">
-                            <?php if ($periodStats['best_pace']['value'] !== INF && $periodStats['best_pace']['value'] > 0): ?>
-                            <div class="record-card">
-                                <div class="record-icon">
-                                    <i class="fas fa-bolt"></i>
+                <!-- Stats Overview -->
+                <section class="mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Total Workouts -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mr-4">
+                                    <i class="fas fa-running text-primary text-xl"></i>
                                 </div>
-                                <div class="record-info">
-                                    <h4>Melhor Ritmo</h4>
-                                    <p class="record-value"><?php echo $periodStats['best_pace']['formatted']; ?></p>
-                                    <p class="record-date"><?php echo $periodStats['best_pace']['date']; ?></p>
+                                <div>
+                                    <p class="text-sm text-gray mb-1">Total de Treinos</p>
+                                    <h3 class="text-2xl font-semibold"><?php echo $periodStats['total_workouts']; ?></h3>
                                 </div>
                             </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($periodStats['longest_distance']['value'] > 0): ?>
-                            <div class="record-card">
-                                <div class="record-icon">
-                                    <i class="fas fa-route"></i>
-                                </div>
-                                <div class="record-info">
-                                    <h4>Maior Distância</h4>
-                                    <p class="record-value"><?php echo $periodStats['longest_distance']['value']; ?> km</p>
-                                    <p class="record-date"><?php echo $periodStats['longest_distance']['date']; ?></p>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($periodStats['longest_duration']['value'] > 0): ?>
-                            <div class="record-card">
-                                <div class="record-icon">
-                                    <i class="fas fa-hourglass"></i>
-                                </div>
-                                <div class="record-info">
-                                    <h4>Maior Duração</h4>
-                                    <p class="record-value"><?php echo $periodStats['longest_duration']['formatted']; ?></p>
-                                    <p class="record-date"><?php echo $periodStats['longest_duration']['date']; ?></p>
-                                </div>
-                            </div>
-                            <?php endif; ?>
                         </div>
-                    </div>
-                </section>
-                
-                <!-- Charts Section -->
-                <section class="content-section charts-section">
-                    <h2 class="section-title">Gráficos de Progresso</h2>
-                    
-                    <div class="chart-tabs">
-                        <button class="chart-tab active" data-chart="distance">Distância</button>
-                        <button class="chart-tab" data-chart="pace">Ritmo</button>
-                        <button class="chart-tab" data-chart="duration">Duração</button>
-                    </div>
-                    
-                    <div class="chart-container">
-                        <div class="chart-panel active" id="distance-chart">
-                            <div class="chart-wrapper">
-                                <canvas id="distanceChartCanvas"></canvas>
+
+                        <!-- Total Distance -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-info/10 flex items-center justify-center mr-4">
+                                    <i class="fas fa-road text-info text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray mb-1">Distância Total</p>
+                                    <h3 class="text-2xl font-semibold"><?php echo $periodStats['total_distance']; ?> km</h3>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="chart-panel" id="pace-chart">
-                            <div class="chart-wrapper">
-                                <canvas id="paceChartCanvas"></canvas>
+
+                        <!-- Total Duration -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mr-4">
+                                    <i class="fas fa-stopwatch text-secondary text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray mb-1">Tempo Total</p>
+                                    <h3 class="text-2xl font-semibold"><?php echo $periodStats['duration_formatted']; ?></h3>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="chart-panel" id="duration-chart">
-                            <div class="chart-wrapper">
-                                <canvas id="durationChartCanvas"></canvas>
+
+                        <!-- Average Pace -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mr-4">
+                                    <i class="fas fa-tachometer-alt text-success text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray mb-1">Ritmo Médio</p>
+                                    <h3 class="text-2xl font-semibold"><?php echo $periodStats['pace_formatted']; ?></h3>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
-                
-                <!-- Recent Workouts -->
-                <section class="content-section recent-workouts">
-                    <h2 class="section-title">Treinos Recentes</h2>
+
+                <!-- Charts -->
+                <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Distance Chart -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium mb-4">Distância por Dia</h3>
+                        <div class="h-64">
+                            <canvas id="distanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Pace Chart -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium mb-4">Ritmo por Dia</h3>
+                        <div class="h-64">
+                            <canvas id="paceChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Workout List -->
+                <section class="bg-white rounded-lg shadow mb-6">
+                    <div class="p-6 border-b border-gray-100">
+                        <h3 class="text-lg font-medium">Treinos no Período</h3>
+                    </div>
                     
                     <?php if (!empty($workouts)): ?>
-                        <div class="workout-cards">
-                            <?php foreach (array_slice($workouts, 0, 5) as $workout): ?>
-                                <div class="workout-card">
-                                    <div class="workout-type">
-                                        <i class="fas <?php echo $workout['type_icon']; ?>"></i>
-                                    </div>
-                                    <div class="workout-details">
-                                        <div class="workout-header">
-                                            <h3><?php echo $workout['type_label']; ?></h3>
-                                            <span class="workout-date"><?php echo $workout['date_formatted']; ?></span>
-                                        </div>
-                                        <div class="workout-stats">
-                                            <div class="workout-stat">
-                                                <i class="fas fa-route"></i>
-                                                <span><?php echo $workout['distance']; ?> km</span>
-                                            </div>
-                                            <div class="workout-stat">
-                                                <i class="fas fa-clock"></i>
-                                                <span><?php echo $workout['duration_formatted']; ?></span>
-                                            </div>
-                                            <div class="workout-stat">
-                                                <i class="fas fa-tachometer-alt"></i>
-                                                <span><?php echo $workout['pace_formatted']; ?></span>
-                                            </div>
-                                        </div>
-                                        <?php if (!empty($workout['notes'])): ?>
-                                            <div class="workout-notes">
-                                                <p><?php echo htmlspecialchars($workout['notes']); ?></p>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="workout-actions">
-                                        <button class="btn-icon view-workout-btn" data-id="<?php echo $workout['workout_id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Data</th>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Tipo</th>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Distância</th>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Duração</th>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Ritmo</th>
+                                        <th class="py-3 px-4 text-left text-sm font-medium text-gray">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <?php foreach ($workouts as $workout): ?>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="py-3 px-4 text-sm"><?php echo htmlspecialchars($workout['date_formatted']); ?></td>
+                                            <td class="py-3 px-4 text-sm">
+                                                <div class="flex items-center">
+                                                    <span class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
+                                                        <i class="fas fa-<?php echo htmlspecialchars($workout['type_icon']); ?> text-primary"></i>
+                                                    </span>
+                                                    <?php echo htmlspecialchars($workout['type_label']); ?>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4 text-sm"><?php echo htmlspecialchars($workout['distance']); ?> km</td>
+                                            <td class="py-3 px-4 text-sm"><?php echo htmlspecialchars($workout['duration_formatted']); ?></td>
+                                            <td class="py-3 px-4 text-sm"><?php echo htmlspecialchars($workout['pace_formatted']); ?></td>
+                                            <td class="py-3 px-4 text-sm">
+                                                <div class="flex items-center space-x-2">
+                                                    <button class="p-1 text-secondary hover:text-blue-700" title="Ver detalhes">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="p-1 text-gray hover:text-dark" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="p-1 text-danger hover:text-red-700" title="Excluir">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                        
-                        <?php if (count($workouts) > 5): ?>
-                            <div class="view-all-link">
-                                <a href="workouts.php" class="cta cta--text">Ver todos os treinos <i class="fas fa-chevron-right"></i></a>
-                            </div>
-                        <?php endif; ?>
-                        
                     <?php else: ?>
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="fas fa-running"></i>
+                        <div class="p-6 text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                                <i class="fas fa-running text-gray text-xl"></i>
                             </div>
-                            <h3>Sem treinos no período</h3>
-                            <p>Você não tem treinos registrados no período selecionado.</p>
-                            <a href="workout-planner.php" class="cta cta--primary">Registrar Treino</a>
+                            <h3 class="text-lg font-medium text-dark mb-2">Nenhum treino encontrado</h3>
+                            <p class="text-gray mb-4">Não há registros de treinos para o período selecionado.</p>
+                            <a href="workout-planner.php" class="inline-flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-plus mr-2"></i> Registrar Treino
+                            </a>
                         </div>
                     <?php endif; ?>
+                </section>
+
+                <!-- Personal Records -->
+                <section class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b border-gray-100">
+                        <h3 class="text-lg font-medium">Recordes do Período</h3>
+                    </div>
+                    
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Best Pace -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mr-3">
+                                    <i class="fas fa-tachometer-alt text-success"></i>
+                                </div>
+                                <h4 class="text-md font-medium">Melhor Ritmo</h4>
+                            </div>
+                            <p class="text-xl font-semibold mb-1"><?php echo $periodStats['best_pace']['formatted']; ?></p>
+                            <p class="text-sm text-gray"><?php echo $periodStats['best_pace']['date']; ?></p>
+                        </div>
+                        
+                        <!-- Longest Distance -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center mr-3">
+                                    <i class="fas fa-road text-info"></i>
+                                </div>
+                                <h4 class="text-md font-medium">Maior Distância</h4>
+                            </div>
+                            <p class="text-xl font-semibold mb-1"><?php echo $periodStats['longest_distance']['value']; ?> km</p>
+                            <p class="text-sm text-gray"><?php echo $periodStats['longest_distance']['date']; ?></p>
+                        </div>
+                        
+                        <!-- Longest Duration -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                    <i class="fas fa-stopwatch text-primary"></i>
+                                </div>
+                                <h4 class="text-md font-medium">Maior Duração</h4>
+                            </div>
+                            <p class="text-xl font-semibold mb-1"><?php echo $periodStats['longest_duration']['formatted']; ?></p>
+                            <p class="text-sm text-gray"><?php echo $periodStats['longest_duration']['date']; ?></p>
+                        </div>
+                    </div>
                 </section>
             </div>
         </main>
@@ -590,9 +580,102 @@ if (isset($_GET['period'])) {
     <script>
         // Dados para gráficos
         const chartData = <?php echo json_encode($chartData); ?>;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar gráfico de distância
+            const distanceCtx = document.getElementById('distanceChart').getContext('2d');
+            const distanceChart = new Chart(distanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Distância (km)',
+                        data: chartData.distance,
+                        backgroundColor: 'rgba(255, 140, 0, 0.4)',
+                        borderColor: 'rgba(255, 140, 0, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Distância (km)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Configurar gráfico de ritmo
+            const paceCtx = document.getElementById('paceChart').getContext('2d');
+            const paceChart = new Chart(paceCtx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Ritmo (min/km)',
+                        data: chartData.pace,
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            reverse: true,
+                            title: {
+                                display: true,
+                                text: 'Ritmo (seg/km)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const pace = context.raw;
+                                    if (pace) {
+                                        const min = Math.floor(pace / 60);
+                                        const sec = Math.round(pace % 60);
+                                        return `Ritmo: ${min}:${sec.toString().padStart(2, '0')} min/km`;
+                                    }
+                                    return 'Sem dados';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Botões de período
+            const periodButtons = document.querySelectorAll('[data-period]');
+            periodButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const period = this.getAttribute('data-period');
+                    
+                    if (period === 'custom') {
+                        document.getElementById('custom-period-container').classList.remove('hidden');
+                    } else {
+                        // Redirecionar para o período selecionado
+                        window.location.href = `tracking.php?period=${period}`;
+                    }
+                });
+            });
+        });
     </script>
     <script src="../js/main.js"></script>
     <script src="../js/dashboard.js"></script>
     <script src="../js/tracking.js"></script>
+    <script src="../js/sidebar.js"></script>
 </body>
 </html>

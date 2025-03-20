@@ -29,6 +29,10 @@ function getAvailablePlans() {
 }
 
 $availablePlans = getAvailablePlans();
+
+// Define active page for the sidebar
+$activePage = 'workout-planner';
+$isSubDirectory = true;
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -46,45 +50,8 @@ $availablePlans = getAvailablePlans();
 </head>
 <body class="dashboard-body">
     <div class="dashboard-container">
-        <!-- Sidebar Navigation -->
-        <aside class="dashboard-sidebar">
-            <div class="sidebar-header">
-                <a href="../index.html" class="logo">
-                    <h2>Lazz<span>Fit</span></h2>
-                </a>
-                <button class="sidebar-close" id="sidebar-close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <div class="user-profile">
-                <div class="user-avatar">
-                    <?php if (!empty($user['profile_image'])): ?>
-                        <img src="<?php echo htmlspecialchars($user['profile_image']); ?>" alt="Perfil do usuário">
-                    <?php else: ?>
-                        <img src="../images/default-avatar.png" alt="Perfil do usuário">
-                    <?php endif; ?>
-                </div>
-                <div class="user-info">
-                    <h3 class="user-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h3>
-                    <p class="user-level"><?php echo htmlspecialchars($user['runner_level']); ?></p>
-                </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="../dashboard.php"><i class="fas fa-home"></i> Visão Geral</a></li>
-                    <li class="active"><a href="workout-planner.php"><i class="fas fa-running"></i> Planejar Treinos</a></li>
-                    <li><a href="plans.php"><i class="fas fa-calendar-alt"></i> Meus Planos</a></li>
-                    <li><a href="tracking.php"><i class="fas fa-chart-line"></i> Acompanhamento</a></li>
-                    <li><a href="profile.php"><i class="fas fa-user-cog"></i> Perfil</a></li>
-                </ul>
-            </nav>
-
-            <div class="sidebar-footer">
-                <a href="../auth/logout.php" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</a>
-            </div>
-        </aside>
+        <!-- Include Sidebar Component -->
+        <?php include_once '../includes/components/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="dashboard-main">
@@ -334,5 +301,6 @@ $availablePlans = getAvailablePlans();
     <script src="../js/main.js"></script>
     <script src="../js/dashboard.js"></script>
     <script src="../js/workout-planner.js"></script>
+    <script src="../js/sidebar.js"></script>
 </body>
 </html>
