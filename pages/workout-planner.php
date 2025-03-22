@@ -71,7 +71,6 @@ $isSubDirectory = true;
 </head>
 <body class="bg-light font-sans">
     <div class="flex min-h-screen">
-        <!-- Include Sidebar Component -->
         <?php include_once '../includes/components/sidebar.php'; ?>
 
         <!-- Main Content -->
