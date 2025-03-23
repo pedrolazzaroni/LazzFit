@@ -73,7 +73,6 @@ $isSubDirectory = true;
     <div class="flex min-h-screen">
         <?php include_once '../includes/components/sidebar.php'; ?>
 
-        <!-- Main Content -->
         <main class="lg:ml-72 w-full">
             <header class="bg-white p-4 flex items-center justify-between shadow z-10 sticky top-0">
                 <button class="lg:hidden text-xl text-gray p-2" id="sidebar-toggle">
